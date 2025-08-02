@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model notifications {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  ride_id    Int
+  type       String
+  title      String
+  message    String
+  is_read    Boolean   @default(false)
+  send_at    DateTime?
+  sent_at    DateTime?
+  created_at DateTime  @default(now())
+  rides      rides     @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model rides {
+  id               Int             @id @default(autoincrement())
+  organizer_id     Int
+  route_id         Int?
+  title            String
+  description      String?
+  start_date       DateTime        @db.Date
+  start_time       DateTime        @db.Time(6)
+  start_location   String
+  pace             String
+  max_participants Int?
+  is_public        Boolean         @default(true)
+  status           String          @default("active")
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @default(now())
+  notifications    notifications[]
+  users            users           @relation(fields: [organizer_id], references: [id], onDelete: Cascade)
+  routes           routes?         @relation(fields: [route_id], references: [id])
+  rsvps            rsvps[]
+}
+
+model routes {
+  id                    Int      @id @default(autoincrement())
+  strava_route_id       BigInt   @unique
+  name                  String
+  description           String?
+  distance_meters       Int
+  elevation_gain_meters Int?
+  polyline              String?
+  map_image_url         String?
+  estimated_moving_time Int?
+  difficulty_level      String?
+  created_at            DateTime @default(now())
+  rides                 rides[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model rsvps {
+  id         Int      @id @default(autoincrement())
+  ride_id    Int
+  user_id    Int
+  status     String   @default("going")
+  message    String?
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  rides      rides    @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([ride_id, user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users {
+  id                   Int             @id @default(autoincrement())
+  email                String          @unique
+  password_hash        String
+  first_name           String
+  last_name            String
+  strava_user_id       BigInt?         @unique
+  strava_access_token  String?
+  strava_refresh_token String?
+  profile_photo_url    String?
+  location             String?
+  bike_type            String?
+  experience_level     String?
+  created_at           DateTime        @default(now())
+  updated_at           DateTime        @default(now())
+  notifications        notifications[]
+  rides                rides[]
+  rsvps                rsvps[]
+}
