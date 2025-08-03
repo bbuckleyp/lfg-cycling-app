@@ -132,7 +132,7 @@ export class RsvpService {
         id: rsvp.users.id,
         firstName: rsvp.users.first_name,
         lastName: rsvp.users.last_name,
-        profilePhotoUrl: rsvp.users.profile_photo_url,
+        profilePhotoUrl: rsvp.users.profile_photo_url || undefined,
         experienceLevel: rsvp.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
       },
     };
@@ -175,7 +175,7 @@ export class RsvpService {
         id: rsvp.users.id,
         firstName: rsvp.users.first_name,
         lastName: rsvp.users.last_name,
-        profilePhotoUrl: rsvp.users.profile_photo_url,
+        profilePhotoUrl: rsvp.users.profile_photo_url || undefined,
         experienceLevel: rsvp.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
       },
     }));
@@ -218,7 +218,7 @@ export class RsvpService {
         id: rsvp.users.id,
         firstName: rsvp.users.first_name,
         lastName: rsvp.users.last_name,
-        profilePhotoUrl: rsvp.users.profile_photo_url,
+        profilePhotoUrl: rsvp.users.profile_photo_url || undefined,
         experienceLevel: rsvp.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
       },
     };

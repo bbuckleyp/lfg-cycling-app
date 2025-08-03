@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '../context/AuthContext';
+import { authApi } from '../services/api';
 
 const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -20,7 +21,41 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 const Register: React.FC = () => {
   const { register: registerUser, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState<string>('');
+  const [stravaLoading, setStravaLoading] = useState(false);
+
+  // Handle Strava OAuth callback
+  useEffect(() => {
+    const handleStravaCallback = async () => {
+      const urlParams = new URLSearchParams(location.search);
+      const stravaStatus = urlParams.get('strava');
+      const token = urlParams.get('token');
+      const message = urlParams.get('message');
+
+      if (stravaStatus === 'success' && token) {
+        try {
+          // Store token
+          localStorage.setItem('token', token);
+          
+          // Fetch user data using the token
+          const userResponse = await authApi.getMe();
+          localStorage.setItem('user', JSON.stringify(userResponse.user));
+          
+          // Clear URL parameters and redirect
+          window.location.href = '/dashboard';
+        } catch (error) {
+          console.error('Failed to fetch user data:', error);
+          setError('Authentication succeeded but failed to get user data');
+          localStorage.removeItem('token');
+        }
+      } else if (stravaStatus === 'error') {
+        setError(message ? decodeURIComponent(message) : 'Strava authentication failed');
+      }
+    };
+
+    handleStravaCallback();
+  }, [location.search]);
 
   const {
     register,
@@ -37,6 +72,18 @@ const Register: React.FC = () => {
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed');
+    }
+  };
+
+  const handleStravaSignup = async () => {
+    try {
+      setError('');
+      setStravaLoading(true);
+      const response = await authApi.getStravaAuthUrl('signup', window.location.origin);
+      window.location.href = response.authUrl;
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to initiate Strava signup');
+      setStravaLoading(false);
     }
   };
 
@@ -170,6 +217,26 @@ const Register: React.FC = () => {
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
             >
               {isLoading ? 'Creating account...' : 'Create account'}
+            </button>
+          </div>
+
+          <div className="flex items-center">
+            <div className="flex-1 border-t border-gray-300"></div>
+            <div className="px-4 text-sm text-gray-500">or</div>
+            <div className="flex-1 border-t border-gray-300"></div>
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={handleStravaSignup}
+              disabled={stravaLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+            >
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.599h4.172L10.463 0l-7 13.828h4.172"/>
+              </svg>
+              {stravaLoading ? 'Connecting to Strava...' : 'Sign up with Strava'}
             </button>
           </div>
 

@@ -25,7 +25,7 @@ export interface CreateRideRequest {
   pace: 'social' | 'tempo' | 'race';
   routeId?: number;
   stravaRouteData?: {
-    stravaRouteId: string;
+    stravaRouteId?: string;
     name: string;
     distance: number;
     elevationGain: number;
@@ -45,7 +45,7 @@ export interface UpdateRideRequest {
   pace?: 'social' | 'tempo' | 'race';
   routeId?: number;
   stravaRouteData?: {
-    stravaRouteId: string;
+    stravaRouteId?: string;
     name: string;
     distance: number;
     elevationGain: number;
@@ -66,7 +66,7 @@ export interface RideWithDetails extends Ride {
   };
   route?: {
     id: number;
-    stravaRouteId: string;
+    stravaRouteId?: string;
     name: string;
     distanceMeters: number;
     elevationGainMeters?: number;

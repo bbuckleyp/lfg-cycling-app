@@ -15,11 +15,11 @@ router.get(
     query('offset').optional().isInt({ min: 0 }).toInt(),
   ],
   validateRequest,
-  async (req, res) => {
+  async (req: express.Request, res: express.Response) => {
     try {
-      const userId = req.user!.id;
-      const limit = req.query.limit as number || 50;
-      const offset = req.query.offset as number || 0;
+      const userId = req.user!.userId;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
 
       const notifications = await notificationService.getUserNotifications(userId, limit, offset);
 
@@ -41,9 +41,9 @@ router.get(
 router.get(
   '/unread-count',
   authenticateToken,
-  async (req, res) => {
+  async (req: express.Request, res: express.Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const count = await notificationService.getUnreadCount(userId);
 
       res.json({
@@ -68,9 +68,9 @@ router.patch(
     param('id').isInt().toInt(),
   ],
   validateRequest,
-  async (req, res) => {
+  async (req: express.Request, res: express.Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       const notificationId = req.params.id as unknown as number;
 
       await notificationService.markAsRead(notificationId, userId);
@@ -93,9 +93,9 @@ router.patch(
 router.patch(
   '/read-all',
   authenticateToken,
-  async (req, res) => {
+  async (req: express.Request, res: express.Response) => {
     try {
-      const userId = req.user!.id;
+      const userId = req.user!.userId;
       await notificationService.markAllAsRead(userId);
 
       res.json({

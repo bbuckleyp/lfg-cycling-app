@@ -3,7 +3,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  stravaUserId?: number;
+  stravaUserId?: string;
   profilePhotoUrl?: string;
   location?: string;
   bikeType?: string;

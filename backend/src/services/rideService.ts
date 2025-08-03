@@ -204,7 +204,7 @@ export class RideService {
       updatedAt: ride.updated_at.toISOString(),
       rsvpCount: ride._count.rsvps,
       commentCount: ride._count.comments,
-      userRsvpStatus: userRsvp?.status as 'going' | 'maybe' | 'not_going' | undefined,
+      userRsvpStatus: (userRsvp && typeof userRsvp === 'object' && 'status' in userRsvp) ? userRsvp.status as 'going' | 'maybe' | 'not_going' : undefined,
     };
   }
 
@@ -322,7 +322,7 @@ export class RideService {
         updatedAt: ride.updated_at.toISOString(),
         rsvpCount: ride._count.rsvps,
       commentCount: ride._count.comments,
-        userRsvpStatus: userRsvp?.status as 'going' | 'maybe' | 'not_going' | undefined,
+        userRsvpStatus: (userRsvp && typeof userRsvp === 'object' && 'status' in userRsvp) ? userRsvp.status as 'going' | 'maybe' | 'not_going' : undefined,
       };
     });
 

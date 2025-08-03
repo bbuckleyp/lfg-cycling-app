@@ -11,6 +11,7 @@ import Rides from './pages/Rides';
 import RideDetail from './pages/RideDetail';
 import Dashboard from './pages/Dashboard';
 import StravaCallback from './pages/StravaCallback';
+import StravaAuthCallback from './pages/StravaAuthCallback';
 
 // Placeholder components
 const Home = () => (
@@ -92,7 +93,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="/auth/strava/callback" element={<StravaCallback />} />
+              <Route path="/auth/strava/callback" element={<StravaAuthCallback />} />
+              <Route path="/strava/callback" element={<StravaCallback />} />
             </Routes>
           </main>
         </div>

@@ -51,30 +51,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      console.log('🔄 AuthContext initializing...');
       const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
-
-      console.log('🔍 Stored token:', token ? 'EXISTS' : 'NONE');
-      console.log('🔍 Stored user:', userStr ? 'EXISTS' : 'NONE');
 
       if (token && userStr) {
         try {
           const user = JSON.parse(userStr);
-          console.log('✅ Restoring auth state for user:', user.email);
           dispatch({ type: 'SET_USER', payload: { user, token } });
           
           // Verify token is still valid
           await authApi.getMe();
-          console.log('✅ Token validation successful');
         } catch (error) {
-          console.error('❌ Token validation failed:', error);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           dispatch({ type: 'CLEAR_USER' });
         }
+      } else if (token && !userStr) {
+        // Token exists but no user data - try to fetch user data
+        try {
+          const userResponse = await authApi.getMe();
+          const user = userResponse.user;
+          localStorage.setItem('user', JSON.stringify(user));
+          dispatch({ type: 'SET_USER', payload: { user, token } });
+        } catch (error) {
+          localStorage.removeItem('token');
+          dispatch({ type: 'CLEAR_USER' });
+        }
       } else {
-        console.log('❌ No valid auth state found');
         dispatch({ type: 'SET_LOADING', payload: false });
       }
     };

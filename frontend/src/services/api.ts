@@ -3,8 +3,6 @@ import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth'
 import type { CreateCommentRequest, UpdateCommentRequest } from '../types/comment';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
-console.log('🔗 API_BASE_URL:', API_BASE_URL);
-console.log('🔗 VITE_API_BASE_URL env var:', import.meta.env.VITE_API_BASE_URL);
 
 
 const api = axios.create({
@@ -48,6 +46,15 @@ export const authApi = {
 
   updateProfile: (data: any) =>
     api.put('/auth/profile', data).then(res => res.data),
+
+  getStravaAuthUrl: (action: 'login' | 'signup', redirectUrl?: string) => {
+    const params = new URLSearchParams({ action });
+    if (redirectUrl) {
+      params.append('redirect_url', redirectUrl);
+    }
+    const url = `/auth/strava/auth-url?${params.toString()}`;
+    return api.get(url).then(res => res.data);
+  },
 
   logout: () =>
     api.post('/auth/logout').then(res => res.data),

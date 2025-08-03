@@ -15,7 +15,7 @@ export class StravaService {
   constructor() {
     this.clientId = process.env.STRAVA_CLIENT_ID || 'placeholder';
     this.clientSecret = process.env.STRAVA_CLIENT_SECRET || 'placeholder';
-    this.redirectUri = process.env.STRAVA_REDIRECT_URI || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/strava/callback`;
+    this.redirectUri = process.env.STRAVA_REDIRECT_URI || `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/auth/strava/callback`;
 
     // Only throw error in production if Strava is required
     if ((!this.clientId || this.clientId === 'placeholder') && process.env.NODE_ENV === 'production' && process.env.REQUIRE_STRAVA === 'true') {
