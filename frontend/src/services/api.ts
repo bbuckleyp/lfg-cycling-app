@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth';
+import type { CreateCommentRequest, UpdateCommentRequest } from '../types/comment';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 console.log('🔗 API_BASE_URL:', API_BASE_URL);
@@ -124,6 +125,20 @@ export const rsvpApi = {
 
   getStats: (rideId: number) =>
     api.get(`/rides/${rideId}/rsvp-stats`).then(res => res.data),
+};
+
+export const commentsApi = {
+  getRideComments: (rideId: number) =>
+    api.get(`/rides/${rideId}/comments`).then(res => res.data),
+
+  create: (rideId: number, data: CreateCommentRequest) =>
+    api.post(`/rides/${rideId}/comments`, data).then(res => res.data),
+
+  update: (commentId: number, data: UpdateCommentRequest) =>
+    api.put(`/comments/${commentId}`, data).then(res => res.data),
+
+  delete: (commentId: number) =>
+    api.delete(`/comments/${commentId}`).then(res => res.data),
 };
 
 export default api;

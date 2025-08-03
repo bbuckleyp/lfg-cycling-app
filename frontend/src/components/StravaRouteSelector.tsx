@@ -27,6 +27,7 @@ interface SelectedRoute {
   distance: number;
   elevationGain: number;
   estimatedTime: number;
+  isNoRoute?: boolean;
 }
 
 interface StravaRouteSelectorProps {
@@ -45,12 +46,20 @@ const StravaRouteSelector: React.FC<StravaRouteSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const [stravaConnected, setStravaConnected] = useState(false);
   const [connectError, setConnectError] = useState<string>('');
+  const [showRouteSelector, setShowRouteSelector] = useState(false);
 
   useEffect(() => {
     if (user) {
       initializeStravaData();
     }
   }, [user]);
+
+  useEffect(() => {
+    // Show route selector if no route is selected initially
+    if (!selectedRoute) {
+      setShowRouteSelector(true);
+    }
+  }, [selectedRoute]);
 
   const initializeStravaData = async () => {
     try {
@@ -112,10 +121,32 @@ const StravaRouteSelector: React.FC<StravaRouteSelectorProps> = ({
       estimatedTime: route.estimated_moving_time,
     };
     onRouteSelect(selectedRouteData);
+    setShowRouteSelector(false);
   };
 
   const handleClearSelection = () => {
     onRouteSelect(undefined);
+    setShowRouteSelector(false);
+  };
+
+  const handleChangeRoute = () => {
+    setShowRouteSelector(true);
+  };
+
+  const handleClearRouteFromSelector = () => {
+    
+    // Create a special "No Route" selection state
+    const noRouteSelection = {
+      stravaId: 'no-route',
+      name: 'No Route',
+      distance: 0,
+      elevationGain: 0,
+      estimatedTime: 0,
+      isNoRoute: true,
+    };
+    
+    onRouteSelect(noRouteSelection);
+    setShowRouteSelector(false); // Hide the selector like a normal selection
   };
 
   if (!user) {
@@ -171,23 +202,90 @@ const StravaRouteSelector: React.FC<StravaRouteSelectorProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {selectedRoute ? (
+          {(() => {
+            const hasRoute = selectedRoute !== undefined && selectedRoute !== null;
+            const condition = hasRoute && !showRouteSelector;
+            return condition;
+          })() ? (
             <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h4 className="font-medium text-gray-900 mb-1">Selected Route</h4>
+                  <h4 className="font-medium text-gray-900 mb-1">
+                    {selectedRoute.isNoRoute ? 'No Strava Route Selected' : 'Selected Route'}
+                  </h4>
                   <p className="text-sm font-medium text-primary-800">{selectedRoute.name}</p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-2">
-                    <span>{formatDistance(selectedRoute.distance)}</span>
-                    <span>{formatElevation(selectedRoute.elevationGain)} elevation</span>
-                    {selectedRoute.estimatedTime > 0 && (
-                      <span>{formatTime(selectedRoute.estimatedTime)} estimated</span>
-                    )}
-                  </div>
+                  
+                  {selectedRoute.isNoRoute ? (
+                    // Show input fields for manual distance/elevation entry
+                    <div className="mt-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Distance (miles)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            placeholder="0.0"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                            onChange={(e) => {
+                              const miles = parseFloat(e.target.value) || 0;
+                              const meters = miles * 1609.34; // Convert miles to meters
+                              const updatedRoute = {
+                                ...selectedRoute,
+                                distance: meters
+                              };
+                              onRouteSelect(updatedRoute);
+                            }}
+                            defaultValue={selectedRoute.distance > 0 ? (selectedRoute.distance * 0.000621371).toFixed(1) : ''}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Elevation (feet)
+                          </label>
+                          <input
+                            type="number"
+                            step="1"
+                            min="0"
+                            placeholder="0"
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-transparent"
+                            onChange={(e) => {
+                              const feet = parseFloat(e.target.value) || 0;
+                              const meters = feet * 0.3048; // Convert feet to meters
+                              const updatedRoute = {
+                                ...selectedRoute,
+                                elevationGain: meters
+                              };
+                              onRouteSelect(updatedRoute);
+                            }}
+                            defaultValue={selectedRoute.elevationGain > 0 ? Math.round(selectedRoute.elevationGain * 3.28084).toString() : ''}
+                          />
+                        </div>
+                      </div>
+                      {(selectedRoute.distance > 0 || selectedRoute.elevationGain > 0) && (
+                        <div className="text-xs text-gray-500">
+                          {selectedRoute.distance > 0 && `${formatDistance(selectedRoute.distance)}`}
+                          {selectedRoute.distance > 0 && selectedRoute.elevationGain > 0 && ' • '}
+                          {selectedRoute.elevationGain > 0 && `${formatElevation(selectedRoute.elevationGain)} elevation`}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    // Show normal Strava route info
+                    <div className="flex items-center space-x-4 text-sm text-gray-600 mt-2">
+                      <span>{formatDistance(selectedRoute.distance)}</span>
+                      <span>{formatElevation(selectedRoute.elevationGain)} elevation</span>
+                      {selectedRoute.estimatedTime > 0 && (
+                        <span>{formatTime(selectedRoute.estimatedTime)} estimated</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"
-                  onClick={handleClearSelection}
+                  onClick={handleChangeRoute}
                   className="ml-4 text-sm text-primary-600 hover:text-primary-800 underline"
                 >
                   Change Route
@@ -233,11 +331,10 @@ const StravaRouteSelector: React.FC<StravaRouteSelectorProps> = ({
                   <div className="p-2">
                     <button
                       type="button"
-                      onClick={handleClearSelection}
+                      onClick={handleClearRouteFromSelector}
                       className="w-full text-left p-3 hover:bg-gray-50 rounded border-b border-gray-100"
                     >
-                      <span className="text-gray-700 font-medium">No route - just a meetup</span>
-                      <p className="text-sm text-gray-500">Riders will meet but no specific route is planned</p>
+                      <span className="text-gray-700 font-medium">No Route</span>
                     </button>
                   </div>
                   

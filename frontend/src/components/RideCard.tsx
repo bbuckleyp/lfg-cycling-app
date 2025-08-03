@@ -7,19 +7,19 @@ import StravaRoutePreview from './StravaRoutePreview';
 
 interface RideCardProps {
   ride: RideWithDetails;
+  viewMode?: 'grid' | 'list';
 }
 
-const RideCard: React.FC<RideCardProps> = ({ ride }) => {
+const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
   const { user } = useAuth();
   const isOrganizer = user?.id === ride.organizerId;
+  
   
   const formatDate = (dateStr: string) => {
     try {
       if (!dateStr) {
-        console.error('formatDate called with empty/null date:', dateStr);
         return 'Invalid date';
       }
-      console.log('Formatting date:', dateStr, typeof dateStr);
       return format(parseISO(dateStr), 'MMM d, yyyy');
     } catch (error) {
       console.error('Error formatting date:', dateStr, error);
@@ -70,6 +70,150 @@ const RideCard: React.FC<RideCardProps> = ({ ride }) => {
     }
   };
 
+  if (viewMode === 'list') {
+    // List view - compact vertical layout with full-width route map
+    return (
+      <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 border border-gray-200">
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1 min-w-0">
+              <Link
+                to={`/rides/${ride.id}`}
+                className="text-lg font-semibold text-gray-900 hover:text-primary-600 transition-colors truncate block"
+              >
+                {ride.title}
+              </Link>
+              <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {formatDate(ride.startDate)} at {formatTime(ride.startTime)}
+                </div>
+                <div className="flex items-center">
+                  <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {ride.startLocation}
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2 ml-4">
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${getPaceBadgeColor(ride.pace)}`}>
+                {ride.pace}
+              </span>
+              {ride.userRsvpStatus && (
+                <div className={`text-sm font-medium ${getRsvpStatusColor(ride.userRsvpStatus)}`}>
+                  {ride.userRsvpStatus === 'going' && '✓ Going'}
+                  {ride.userRsvpStatus === 'maybe' && '? Maybe'}
+                  {ride.userRsvpStatus === 'not_going' && '✗ Not Going'}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Route info and map */}
+          {(ride.route || (ride.distanceMeters && ride.distanceMeters > 0)) && (
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h4 className="text-sm font-medium text-gray-900">
+                    {ride.route ? ride.route.name : 'Route Details'}
+                  </h4>
+                  <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
+                    {ride.route ? (
+                      <>
+                        <span>{formatDistance(ride.route.distanceMeters)}</span>
+                        <span>{formatElevation(ride.route.elevationGainMeters)} elevation</span>
+                      </>
+                    ) : (
+                      <>
+                        {ride.distanceMeters && ride.distanceMeters > 0 && (
+                          <span>{formatDistance(ride.distanceMeters)}</span>
+                        )}
+                        {ride.elevationGainMeters && ride.elevationGainMeters > 0 && (
+                          <span>{formatElevation(ride.elevationGainMeters)} elevation</span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              
+              {/* Route Map Preview - full width in list view */}
+              {ride.route?.stravaRouteId ? (
+                <StravaRoutePreview
+                  stravaRouteId={ride.route.stravaRouteId}
+                  routeName={ride.route.name}
+                  className="min-h-[150px] w-full rounded"
+                />
+              ) : ride.route ? (
+                <div className="min-h-[150px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
+                  No route preview available
+                </div>
+              ) : null}
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                {ride.organizer.profilePhotoUrl ? (
+                  <img
+                    className="h-6 w-6 rounded-full"
+                    src={ride.organizer.profilePhotoUrl}
+                    alt={`${ride.organizer.firstName} ${ride.organizer.lastName}`}
+                  />
+                ) : (
+                  <div className="h-6 w-6 rounded-full bg-primary-100 flex items-center justify-center">
+                    <span className="text-xs font-medium text-primary-600">
+                      {ride.organizer.firstName[0]}{ride.organizer.lastName[0]}
+                    </span>
+                  </div>
+                )}
+                <span className="ml-2 text-sm text-gray-700">
+                  {ride.organizer.firstName} {ride.organizer.lastName}
+                </span>
+              </div>
+              
+              <div className="flex items-center text-sm text-gray-600">
+                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-7.5l-3 3m0 0l-3-3m3 3V9a6 6 0 00-6-6" />
+                </svg>
+                {ride.rsvpCount} going
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {isOrganizer && (
+                <Link
+                  to={`/rides/${ride.id}/edit`}
+                  className="inline-flex items-center justify-center px-2 py-1 border border-gray-300 text-xs leading-4 font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+                >
+                  <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit
+                </Link>
+              )}
+              <Link
+                to={`/rides/${ride.id}`}
+                className="inline-flex items-center justify-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
+              >
+                View Details
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Grid view - original detailed layout
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
       <div className="p-4">
@@ -117,14 +261,29 @@ const RideCard: React.FC<RideCardProps> = ({ ride }) => {
           </div>
         </div>
 
-        {ride.route && (
+        {(ride.route || (ride.distanceMeters && ride.distanceMeters > 0) || (ride.elevationGainMeters && ride.elevationGainMeters > 0)) && (
           <div className="bg-gray-50 rounded-lg p-3 mb-4">
             <div className="flex items-center justify-between mb-2">
               <div>
-                <h4 className="font-medium text-gray-900">{ride.route.name}</h4>
+                <h4 className="font-medium text-gray-900">
+                  {ride.route ? ride.route.name : 'Route Details'}
+                </h4>
                 <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                  <span>{formatDistance(ride.route.distanceMeters)}</span>
-                  <span>{formatElevation(ride.route.elevationGainMeters)} elevation</span>
+                  {ride.route ? (
+                    <>
+                      <span>{formatDistance(ride.route.distanceMeters)}</span>
+                      <span>{formatElevation(ride.route.elevationGainMeters)} elevation</span>
+                    </>
+                  ) : (
+                    <>
+                      {ride.distanceMeters && ride.distanceMeters > 0 && (
+                        <span>{formatDistance(ride.distanceMeters)}</span>
+                      )}
+                      {ride.elevationGainMeters && ride.elevationGainMeters > 0 && (
+                        <span>{formatElevation(ride.elevationGainMeters)} elevation</span>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
               <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,18 +291,18 @@ const RideCard: React.FC<RideCardProps> = ({ ride }) => {
               </svg>
             </div>
             
-            {/* Route Map Preview */}
-            {ride.route.stravaRouteId ? (
+            {/* Route Map Preview - only show for Strava routes */}
+            {ride.route?.stravaRouteId ? (
               <StravaRoutePreview
                 stravaRouteId={ride.route.stravaRouteId}
                 routeName={ride.route.name}
                 className="min-h-[200px] w-full"
               />
-            ) : (
+            ) : ride.route ? (
               <div className="min-h-[200px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
                 No route preview available
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -176,7 +335,6 @@ const RideCard: React.FC<RideCardProps> = ({ ride }) => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-7.5l-3 3m0 0l-3-3m3 3V9a6 6 0 00-6-6" />
               </svg>
               {ride.rsvpCount} going
-              {ride.maxParticipants && ` / ${ride.maxParticipants} max`}
             </div>
           </div>
 

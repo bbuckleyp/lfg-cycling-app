@@ -17,11 +17,11 @@ export class RsvpService {
             },
           },
         },
-        organizer: {
+        users: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            first_name: true,
+            last_name: true,
           },
         },
       },
@@ -35,13 +35,6 @@ export class RsvpService {
       throw new Error('Cannot RSVP to inactive ride');
     }
 
-    // Check if ride is full (only for 'going' status)
-    if (data.status === 'going' && ride.maxParticipants) {
-      const currentCount = ride._count.rsvps;
-      if (currentCount >= ride.maxParticipants) {
-        throw new Error('Ride is full');
-      }
-    }
 
     // Check if user is trying to RSVP to their own ride
     if (ride.organizer_id === userId) {
@@ -57,10 +50,10 @@ export class RsvpService {
         },
       },
       include: {
-        user: {
+        users: {
           select: {
-            firstName: true,
-            lastName: true,
+            first_name: true,
+            last_name: true,
           },
         },
       },
@@ -91,13 +84,13 @@ export class RsvpService {
         message: data.message,
       },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            profilePhotoUrl: true,
-            experienceLevel: true,
+            first_name: true,
+            last_name: true,
+            profile_photo_url: true,
+            experience_level: true,
           },
         },
       },
@@ -109,12 +102,12 @@ export class RsvpService {
         await notificationService.notifyNewParticipant(
           rideId,
           ride.organizer_id,
-          `${rsvp.user.first_name} ${rsvp.user.last_name}`
+          `${rsvp.users.first_name} ${rsvp.users.last_name}`
         );
       } else if (isLeavingRide) {
-        const userName = existingRsvp?.user ? 
-          `${existingRsvp.user.first_name} ${existingRsvp.user.last_name}` :
-          `${rsvp.user.first_name} ${rsvp.user.last_name}`;
+        const userName = existingRsvp?.users ? 
+          `${existingRsvp.users.first_name} ${existingRsvp.users.last_name}` :
+          `${rsvp.users.first_name} ${rsvp.users.last_name}`;
         
         await notificationService.notifyParticipantLeft(
           rideId,
@@ -128,14 +121,25 @@ export class RsvpService {
     }
 
     return {
-      ...rsvp,
-      created_at: rsvp.createdAt.toISOString(),
-      updated_at: rsvp.updatedAt.toISOString(),
+      id: rsvp.id,
+      rideId: rsvp.ride_id,
+      userId: rsvp.user_id,
+      status: rsvp.status as 'going' | 'maybe' | 'not_going',
+      message: rsvp.message,
+      createdAt: rsvp.created_at.toISOString(),
+      updatedAt: rsvp.updated_at.toISOString(),
+      user: {
+        id: rsvp.users.id,
+        firstName: rsvp.users.first_name,
+        lastName: rsvp.users.last_name,
+        profilePhotoUrl: rsvp.users.profile_photo_url,
+        experienceLevel: rsvp.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
+      },
     };
   }
 
   async getRideRsvps(rideId: number, status?: string): Promise<RsvpWithUser[]> {
-    const whereClause: any = { rideId };
+    const whereClause: any = { ride_id: rideId };
     if (status) {
       whereClause.status = status;
     }
@@ -143,13 +147,13 @@ export class RsvpService {
     const rsvps = await prisma.rsvps.findMany({
       where: whereClause,
       include: {
-        user: {
+        users: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            profilePhotoUrl: true,
-            experienceLevel: true,
+            first_name: true,
+            last_name: true,
+            profile_photo_url: true,
+            experience_level: true,
           },
         },
       },
@@ -160,9 +164,20 @@ export class RsvpService {
     });
 
     return rsvps.map(rsvp => ({
-      ...rsvp,
-      created_at: rsvp.createdAt.toISOString(),
-      updated_at: rsvp.updatedAt.toISOString(),
+      id: rsvp.id,
+      rideId: rsvp.ride_id,
+      userId: rsvp.user_id,
+      status: rsvp.status as 'going' | 'maybe' | 'not_going',
+      message: rsvp.message,
+      createdAt: rsvp.created_at.toISOString(),
+      updatedAt: rsvp.updated_at.toISOString(),
+      user: {
+        id: rsvp.users.id,
+        firstName: rsvp.users.first_name,
+        lastName: rsvp.users.last_name,
+        profilePhotoUrl: rsvp.users.profile_photo_url,
+        experienceLevel: rsvp.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
+      },
     }));
   }
 
@@ -175,13 +190,13 @@ export class RsvpService {
         },
       },
       include: {
-        user: {
+        users: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
-            profilePhotoUrl: true,
-            experienceLevel: true,
+            first_name: true,
+            last_name: true,
+            profile_photo_url: true,
+            experience_level: true,
           },
         },
       },
@@ -192,9 +207,20 @@ export class RsvpService {
     }
 
     return {
-      ...rsvp,
-      created_at: rsvp.createdAt.toISOString(),
-      updated_at: rsvp.updatedAt.toISOString(),
+      id: rsvp.id,
+      rideId: rsvp.ride_id,
+      userId: rsvp.user_id,
+      status: rsvp.status as 'going' | 'maybe' | 'not_going',
+      message: rsvp.message,
+      createdAt: rsvp.created_at.toISOString(),
+      updatedAt: rsvp.updated_at.toISOString(),
+      user: {
+        id: rsvp.users.id,
+        firstName: rsvp.users.first_name,
+        lastName: rsvp.users.last_name,
+        profilePhotoUrl: rsvp.users.profile_photo_url,
+        experienceLevel: rsvp.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
+      },
     };
   }
 
@@ -226,7 +252,7 @@ export class RsvpService {
   async getRsvpStats(rideId: number) {
     const stats = await prisma.rsvps.groupBy({
       by: ['status'],
-      where: { rideId },
+      where: { ride_id: rideId },
       _count: {
         status: true,
       },

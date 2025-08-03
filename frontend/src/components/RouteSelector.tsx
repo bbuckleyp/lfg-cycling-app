@@ -46,8 +46,8 @@ const RouteSelector: React.FC<RouteSelectorProps> = ({
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = (e?: React.FormEvent | React.KeyboardEvent) => {
+    e?.preventDefault();
     if (searchQuery.trim()) {
       fetchRoutes(searchQuery);
     } else {
@@ -96,21 +96,23 @@ const RouteSelector: React.FC<RouteSelectorProps> = ({
           </div>
         ) : (
           <div className="space-y-4">
-            <form onSubmit={handleSearch} className="flex gap-2">
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search routes..."
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
               />
               <button
-                type="submit"
+                type="button"
+                onClick={handleSearch}
                 className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
               >
                 Search
               </button>
-            </form>
+            </div>
 
             <div className="border border-gray-300 rounded-md max-h-60 overflow-y-auto">
               <div className="p-2">

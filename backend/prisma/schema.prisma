@@ -8,6 +8,17 @@ datasource db {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model comments {
+  id         Int      @id @default(autoincrement())
+  ride_id    Int
+  user_id    Int
+  content    String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  rides      rides    @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
 model notifications {
   id         Int       @id @default(autoincrement())
   user_id    Int
@@ -25,24 +36,26 @@ model notifications {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model rides {
-  id               Int             @id @default(autoincrement())
-  organizer_id     Int
-  route_id         Int?
-  title            String
-  description      String?
-  start_date       DateTime        @db.Date
-  start_time       DateTime        @db.Time(6)
-  start_location   String
-  pace             String
-  max_participants Int?
-  is_public        Boolean         @default(true)
-  status           String          @default("active")
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @default(now())
-  notifications    notifications[]
-  users            users           @relation(fields: [organizer_id], references: [id], onDelete: Cascade)
-  routes           routes?         @relation(fields: [route_id], references: [id])
-  rsvps            rsvps[]
+  id                    Int             @id @default(autoincrement())
+  organizer_id          Int
+  route_id              Int?
+  title                 String
+  description           String?
+  start_date            DateTime        @db.Date
+  start_time            DateTime        @db.Time(6)
+  start_location        String
+  pace                  String
+  is_public             Boolean         @default(true)
+  status                String          @default("active")
+  distance_meters       Int?
+  elevation_gain_meters Int?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @default(now())
+  comments              comments[]
+  notifications         notifications[]
+  users                 users           @relation(fields: [organizer_id], references: [id], onDelete: Cascade)
+  routes                routes?         @relation(fields: [route_id], references: [id])
+  rsvps                 rsvps[]
 }
 
 model routes {
@@ -91,6 +104,7 @@ model users {
   experience_level     String?
   created_at           DateTime        @default(now())
   updated_at           DateTime        @default(now())
+  comments             comments[]
   notifications        notifications[]
   rides                rides[]
   rsvps                rsvps[]

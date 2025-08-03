@@ -38,7 +38,6 @@ router.post('/connect', authenticateToken, async (req: Request, res: Response): 
     }
 
     const { code, state } = req.body;
-    console.log('🔗 Strava connect request:', { code: code ? 'PROVIDED' : 'MISSING', state: state ? 'PROVIDED' : 'MISSING', userId: req.user.userId });
 
     if (!code || !state) {
       res.status(400).json({ error: 'Missing authorization code or state' });
@@ -49,33 +48,24 @@ router.post('/connect', authenticateToken, async (req: Request, res: Response): 
     let authState: StravaAuthState;
     try {
       authState = JSON.parse(Buffer.from(state as string, 'base64').toString());
-      console.log('🔓 Decoded state:', authState);
     } catch (error) {
-      console.error('❌ Failed to decode state:', error);
+      console.error('Failed to decode state:', error);
       res.status(400).json({ error: 'Invalid state parameter' });
       return;
     }
 
     // Use the authenticated user's ID instead of the state userId for security
     const userId = req.user.userId;
-    console.log('👤 Using authenticated user ID:', userId);
 
     // Exchange code for token
-    console.log('🔄 Exchanging code for token...');
     const tokenData = await stravaService.exchangeCodeForToken(code as string);
-    console.log('✅ Token exchange successful');
     
     // Connect user to Strava
-    console.log('🔗 Connecting user to Strava...');
     await stravaService.connectUserToStrava(userId, tokenData);
-    console.log('✅ User connected to Strava successfully');
 
     res.json({ success: true, message: 'Successfully connected to Strava' });
   } catch (error) {
-    console.error('❌ Error connecting to Strava:', error);
-    if (error instanceof Error) {
-      console.error('❌ Error details:', error.message, error.stack);
-    }
+    console.error('Error connecting to Strava:', error);
     res.status(500).json({ error: 'Failed to connect to Strava' });
   }
 });

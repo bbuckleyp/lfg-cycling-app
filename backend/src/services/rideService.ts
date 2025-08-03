@@ -53,8 +53,9 @@ export class RideService {
         start_time: new Date(`1970-01-01T${data.startTime}:00.000Z`),
         start_location: data.startLocation,
         pace: data.pace,
-        max_participants: data.maxParticipants,
         is_public: data.isPublic ?? true,
+        distance_meters: data.distanceMeters,
+        elevation_gain_meters: data.elevationGainMeters,
       },
       include: {
         users: {
@@ -93,10 +94,11 @@ export class RideService {
       description: ride.description,
       startLocation: ride.start_location,
       pace: ride.pace,
-      maxParticipants: ride.max_participants,
       isPublic: ride.is_public,
       status: ride.status,
       organizerId: ride.organizer_id,
+      distanceMeters: ride.distance_meters,
+      elevationGainMeters: ride.elevation_gain_meters,
       organizer: ride.users ? {
         id: ride.users.id,
         firstName: ride.users.first_name,
@@ -173,10 +175,11 @@ export class RideService {
       description: ride.description,
       startLocation: ride.start_location,
       pace: ride.pace,
-      maxParticipants: ride.max_participants,
       isPublic: ride.is_public,
       status: ride.status,
       organizerId: ride.organizer_id,
+      distanceMeters: ride.distance_meters,
+      elevationGainMeters: ride.elevation_gain_meters,
       organizer: ride.users ? {
         id: ride.users.id,
         firstName: ride.users.first_name,
@@ -287,10 +290,11 @@ export class RideService {
         description: ride.description,
         startLocation: ride.start_location,
         pace: ride.pace,
-        maxParticipants: ride.max_participants,
-        isPublic: ride.is_public,
+          isPublic: ride.is_public,
         status: ride.status,
         organizerId: ride.organizer_id,
+        distanceMeters: ride.distance_meters,
+        elevationGainMeters: ride.elevation_gain_meters,
         organizer: ride.users ? {
           id: ride.users.id,
           firstName: ride.users.first_name,
@@ -382,10 +386,11 @@ export class RideService {
       description: ride.description,
       startLocation: ride.start_location,
       pace: ride.pace,
-      maxParticipants: ride.max_participants,
       isPublic: ride.is_public,
       status: ride.status,
       organizerId: ride.organizer_id,
+      distanceMeters: ride.distance_meters,
+      elevationGainMeters: ride.elevation_gain_meters,
       organizer: ride.users ? {
         id: ride.users.id,
         firstName: ride.users.first_name,
@@ -438,7 +443,9 @@ export class RideService {
       throw new Error('Only the ride organizer can update this ride');
     }
 
-    // Validate route exists if provided
+    let routeId = data.routeId;
+
+    // Handle existing route validation
     if (data.routeId) {
       const route = await prisma.routes.findUnique({
         where: { id: data.routeId },
@@ -448,22 +455,57 @@ export class RideService {
       }
     }
 
+    // Handle Strava route data - create route if provided
+    if (data.stravaRouteData) {
+      // Check if route already exists based on stravaRouteId
+      const existingRoute = await prisma.routes.findUnique({
+        where: { strava_route_id: BigInt(data.stravaRouteData.stravaRouteId) },
+      });
+
+      if (existingRoute) {
+        routeId = existingRoute.id;
+      } else {
+        // Create new route from Strava data
+        const newRoute = await prisma.routes.create({
+          data: {
+            strava_route_id: BigInt(data.stravaRouteData.stravaRouteId),
+            name: data.stravaRouteData.name,
+            description: null,
+            distance_meters: Math.round(data.stravaRouteData.distance),
+            elevation_gain_meters: Math.round(data.stravaRouteData.elevationGain),
+            estimated_moving_time: data.stravaRouteData.estimatedTime,
+          },
+        });
+        routeId = newRoute.id;
+      }
+    }
+
     // Track what fields are being changed for notifications
     const changes: string[] = [];
     if (data.title && data.title !== existingRide.title) changes.push('title');
-    if (data.startDate && data.startDate !== existingRide.startDate.toISOString().split('T')[0]) changes.push('date');
-    if (data.startTime && data.startTime !== existingRide.startTime.toTimeString().slice(0, 5)) changes.push('time');
-    if (data.startLocation && data.startLocation !== existingRide.startLocation) changes.push('location');
+    if (data.startDate && data.startDate !== existingRide.start_date.toISOString().split('T')[0]) changes.push('date');
+    if (data.startTime && data.startTime !== existingRide.start_time.toTimeString().slice(0, 5)) changes.push('time');
+    if (data.startLocation && data.startLocation !== existingRide.start_location) changes.push('location');
     if (data.pace && data.pace !== existingRide.pace) changes.push('pace');
 
-    const updateData: any = { ...data };
+    const updateData: any = {
+      title: data.title,
+      description: data.description,
+      start_location: data.startLocation,
+      pace: data.pace,
+      is_public: data.isPublic,
+      route_id: routeId,
+      distance_meters: data.distanceMeters,
+      elevation_gain_meters: data.elevationGainMeters,
+      updated_at: new Date(),
+    };
+    
     if (data.startDate) {
-      updateData.startDate = new Date(data.startDate);
+      updateData.start_date = new Date(data.startDate);
     }
     if (data.startTime) {
-      updateData.startTime = new Date(`1970-01-01T${data.startTime}:00.000Z`);
+      updateData.start_time = new Date(`1970-01-01T${data.startTime}:00.000Z`);
     }
-    updateData.updatedAt = new Date();
 
     const ride = await prisma.rides.update({
       where: { id: rideId },
@@ -513,7 +555,22 @@ export class RideService {
     }
 
     return {
-      ...ride,
+      id: ride.id,
+      title: ride.title,
+      description: ride.description,
+      startLocation: ride.start_location,
+      pace: ride.pace,
+      isPublic: ride.is_public,
+      status: ride.status,
+      organizerId: ride.organizer_id,
+      distanceMeters: ride.distance_meters,
+      elevationGainMeters: ride.elevation_gain_meters,
+      organizer: ride.users ? {
+        id: ride.users.id,
+        firstName: ride.users.first_name,
+        lastName: ride.users.last_name,
+        profilePhotoUrl: ride.users.profile_photo_url,
+      } : undefined,
       route: ride.routes ? {
         id: ride.routes.id,
         name: ride.routes.name,

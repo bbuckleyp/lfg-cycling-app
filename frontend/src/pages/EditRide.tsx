@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ridesApi } from '../services/api';
 import type { RideWithDetails } from '../types/ride';
-import RouteSelector from '../components/RouteSelector';
+import StravaRouteSelector from '../components/StravaRouteSelector';
 
 const editRideSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
@@ -17,8 +17,14 @@ const editRideSchema = z.object({
   pace: z.enum(['social', 'tempo', 'race'], { 
     errorMap: () => ({ message: 'Please select a pace' })
   }),
-  maxParticipants: z.number().int().min(2, 'Must allow at least 2 participants').max(100, 'Too many participants').optional(),
-  routeId: z.number().optional(),
+  stravaRoute: z.object({
+    stravaId: z.string(),
+    name: z.string(),
+    distance: z.number(),
+    elevationGain: z.number(),
+    estimatedTime: z.number(),
+    isNoRoute: z.boolean().optional(),
+  }).optional(),
   isPublic: z.boolean().optional(),
 });
 
@@ -32,6 +38,8 @@ const EditRide: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [localStravaRoute, setLocalStravaRoute] = useState<any>(undefined);
+
 
   const {
     register,
@@ -39,10 +47,12 @@ const EditRide: React.FC = () => {
     control,
     setValue,
     reset,
+    resetField,
     formState: { errors },
   } = useForm<EditRideFormData>({
     resolver: zodResolver(editRideSchema),
   });
+
 
   useEffect(() => {
     const fetchRide = async () => {
@@ -53,7 +63,17 @@ const EditRide: React.FC = () => {
         const rideData = await ridesApi.getById(parseInt(rideId));
         setRide(rideData.ride);
         
-        // Reset form with ride data
+        // Set local Strava route state
+        const initialStravaRoute = rideData.ride.route ? {
+          stravaId: rideData.ride.route.stravaRouteId,
+          name: rideData.ride.route.name,
+          distance: rideData.ride.route.distanceMeters,
+          elevationGain: rideData.ride.route.elevationGainMeters || 0,
+          estimatedTime: rideData.ride.route.estimatedMovingTime || 0,
+        } : undefined;
+        setLocalStravaRoute(initialStravaRoute);
+
+        // Reset form with ride data (excluding stravaRoute)
         reset({
           title: rideData.ride.title,
           description: rideData.ride.description || '',
@@ -61,8 +81,6 @@ const EditRide: React.FC = () => {
           startTime: rideData.ride.startTime,
           startLocation: rideData.ride.startLocation,
           pace: rideData.ride.pace,
-          maxParticipants: rideData.ride.maxParticipants || undefined,
-          routeId: rideData.ride.routeId || undefined,
           isPublic: rideData.ride.isPublic,
         });
       } catch (err: any) {
@@ -82,7 +100,26 @@ const EditRide: React.FC = () => {
       setIsLoading(true);
       setError('');
 
-      await ridesApi.update(parseInt(rideId), data);
+      const updateData = {
+        title: data.title,
+        description: data.description,
+        startDate: data.startDate,
+        startTime: data.startTime,
+        startLocation: data.startLocation,
+        pace: data.pace,
+        isPublic: data.isPublic,
+        stravaRouteData: (localStravaRoute && !localStravaRoute.isNoRoute) ? {
+          stravaRouteId: localStravaRoute.stravaId,
+          name: localStravaRoute.name,
+          distance: localStravaRoute.distance,
+          elevationGain: localStravaRoute.elevationGain,
+          estimatedTime: localStravaRoute.estimatedTime,
+        } : undefined,
+        distanceMeters: (localStravaRoute?.isNoRoute && localStravaRoute.distance > 0) ? Math.round(localStravaRoute.distance) : undefined,
+        elevationGainMeters: (localStravaRoute?.isNoRoute && localStravaRoute.elevationGain > 0) ? Math.round(localStravaRoute.elevationGain) : undefined,
+      };
+
+      await ridesApi.update(parseInt(rideId), updateData);
       navigate(`/rides/${rideId}`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update ride');
@@ -242,40 +279,17 @@ const EditRide: React.FC = () => {
           )}
         </div>
 
-        <div>
-          <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700 mb-1">
-            Max Participants
-          </label>
-          <input
-            {...register('maxParticipants', { 
-              valueAsNumber: true,
-              setValueAs: (value) => value === '' ? undefined : Number(value)
-            })}
-            type="number"
-            min="2"
-            max="100"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            placeholder="Leave blank for unlimited"
-          />
-          {errors.maxParticipants && (
-            <p className="mt-1 text-sm text-red-600">{errors.maxParticipants.message}</p>
-          )}
-        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Route (Optional)
           </label>
-          <Controller
-            name="routeId"
-            control={control}
-            render={({ field }) => (
-              <RouteSelector
-                selectedRouteId={field.value}
-                onRouteSelect={(routeId) => setValue('routeId', routeId)}
-                error={errors.routeId?.message}
-              />
-            )}
+          <StravaRouteSelector
+            selectedRoute={localStravaRoute}
+            onRouteSelect={(route) => {
+              setLocalStravaRoute(route);
+            }}
+            error={undefined}
           />
         </div>
 

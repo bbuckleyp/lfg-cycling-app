@@ -17,13 +17,13 @@ const createRideSchema = z.object({
   pace: z.enum(['social', 'tempo', 'race'], { 
     errorMap: () => ({ message: 'Please select a pace' })
   }),
-  maxParticipants: z.number().int().min(2, 'Must allow at least 2 participants').max(100, 'Too many participants').optional(),
   stravaRoute: z.object({
     stravaId: z.string(),
     name: z.string(),
     distance: z.number(),
     elevationGain: z.number(),
     estimatedTime: z.number(),
+    isNoRoute: z.boolean().optional(),
   }).optional(),
   isPublic: z.boolean().optional(),
 });
@@ -65,15 +65,16 @@ const CreateRide: React.FC = () => {
         startTime: data.startTime,
         startLocation: data.startLocation,
         pace: data.pace,
-        maxParticipants: data.maxParticipants || undefined,
         isPublic: data.isPublic,
-        stravaRouteData: data.stravaRoute ? {
+        stravaRouteData: (data.stravaRoute && !data.stravaRoute.isNoRoute) ? {
           stravaRouteId: data.stravaRoute.stravaId,
           name: data.stravaRoute.name,
           distance: data.stravaRoute.distance,
           elevationGain: data.stravaRoute.elevationGain,
           estimatedTime: data.stravaRoute.estimatedTime,
         } : undefined,
+        distanceMeters: (data.stravaRoute?.isNoRoute && data.stravaRoute.distance > 0) ? Math.round(data.stravaRoute.distance) : undefined,
+        elevationGainMeters: (data.stravaRoute?.isNoRoute && data.stravaRoute.elevationGain > 0) ? Math.round(data.stravaRoute.elevationGain) : undefined,
       };
 
       const response = await ridesApi.create(rideData);
@@ -217,24 +218,6 @@ const CreateRide: React.FC = () => {
               )}
             />
 
-            <div>
-              <label htmlFor="maxParticipants" className="block text-sm font-medium text-gray-700">
-                Max Participants (optional)
-              </label>
-              <input
-                {...register('maxParticipants', { 
-                  setValueAs: (value) => value === '' ? undefined : parseInt(value) 
-                })}
-                type="number"
-                min="2"
-                max="100"
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                placeholder="Leave empty for unlimited"
-              />
-              {errors.maxParticipants && (
-                <p className="mt-1 text-sm text-red-600">{errors.maxParticipants.message}</p>
-              )}
-            </div>
 
             <div className="flex items-center">
               <input

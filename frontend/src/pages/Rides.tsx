@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import RideCard from '../components/RideCard';
 import RideFilters from '../components/RideFilters';
 
+type ViewMode = 'grid' | 'list';
+
 const Rides: React.FC = () => {
   const { user } = useAuth();
   const [rides, setRides] = useState<RideWithDetails[]>([]);
@@ -19,6 +21,41 @@ const Rides: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPace, setSelectedPace] = useState('');
   const [selectedDateRange, setSelectedDateRange] = useState('');
+
+  // View mode state with responsive default
+  const getDefaultViewMode = (): ViewMode => {
+    // Check localStorage first
+    const saved = localStorage.getItem('ridesViewMode') as ViewMode;
+    if (saved === 'grid' || saved === 'list') {
+      return saved;
+    }
+    
+    // Default based on screen size
+    return window.innerWidth >= 768 ? 'grid' : 'list';
+  };
+
+  const [viewMode, setViewMode] = useState<ViewMode>(getDefaultViewMode);
+
+  // Handle view mode changes with localStorage persistence
+  const handleViewModeChange = (newViewMode: ViewMode) => {
+    setViewMode(newViewMode);
+    localStorage.setItem('ridesViewMode', newViewMode);
+  };
+
+  // Handle responsive default on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      // Only update if no saved preference exists
+      const saved = localStorage.getItem('ridesViewMode');
+      if (!saved) {
+        const newDefault = window.innerWidth >= 768 ? 'grid' : 'list';
+        setViewMode(newDefault);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const fetchRides = async (pageNum = 1, reset = false) => {
     try {
@@ -145,17 +182,49 @@ const Rides: React.FC = () => {
             </p>
           </div>
           
-          {user && (
-            <Link
-              to="/create-ride"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create Ride
-            </Link>
-          )}
+          <div className="flex items-center space-x-4">
+            {/* View Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => handleViewModeChange('grid')}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="Grid view"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleViewModeChange('list')}
+                className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="List view"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+
+            {user && (
+              <Link
+                to="/create-ride"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create Ride
+              </Link>
+            )}
+          </div>
         </div>
 
         <RideFilters
@@ -222,9 +291,12 @@ const Rides: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="grid gap-8 lg:grid-cols-1">
+            <div className={viewMode === 'grid' 
+              ? "grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3" 
+              : "space-y-4"
+            }>
               {filteredRides.map((ride) => (
-                <RideCard key={ride.id} ride={ride} />
+                <RideCard key={ride.id} ride={ride} viewMode={viewMode} />
               ))}
             </div>
 

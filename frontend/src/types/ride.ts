@@ -8,9 +8,10 @@ export interface Ride {
   startTime: string;
   startLocation: string;
   pace: 'social' | 'tempo' | 'race';
-  maxParticipants?: number;
   isPublic: boolean;
   status: 'active' | 'cancelled' | 'completed';
+  distanceMeters?: number;
+  elevationGainMeters?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,7 +23,6 @@ export interface CreateRideRequest {
   startTime: string;
   startLocation: string;
   pace: 'social' | 'tempo' | 'race';
-  maxParticipants?: number;
   routeId?: number;
   stravaRouteData?: {
     stravaRouteId: string;
@@ -31,6 +31,8 @@ export interface CreateRideRequest {
     elevationGain: number;
     estimatedTime: number;
   };
+  distanceMeters?: number;
+  elevationGainMeters?: number;
   isPublic?: boolean;
 }
 

@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import RsvpButton from '../components/RsvpButton';
 import RsvpList from '../components/RsvpList';
 import StravaEmbed from '../components/StravaEmbed';
+import CommentForm from '../components/CommentForm';
+import CommentList from '../components/CommentList';
 
 const RideDetail: React.FC = () => {
   const { rideId } = useParams<{ rideId: string }>();
@@ -16,6 +18,7 @@ const RideDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [rsvpRefreshTrigger, setRsvpRefreshTrigger] = useState(0);
+  const [commentRefreshTrigger, setCommentRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (rideId) {
@@ -86,6 +89,10 @@ const RideDetail: React.FC = () => {
   const handleRsvpChange = () => {
     setRsvpRefreshTrigger(prev => prev + 1);
     fetchRide(); // Refresh ride data to update counts
+  };
+
+  const handleCommentAdded = () => {
+    setCommentRefreshTrigger(prev => prev + 1);
   };
 
   const isOrganizer = !!(user && ride && user.id === ride.organizer.id);
@@ -250,7 +257,6 @@ const RideDetail: React.FC = () => {
                     </svg>
                     <p>
                       {ride.rsvpCount} going
-                      {ride.maxParticipants && ` / ${ride.maxParticipants} max`}
                     </p>
                   </div>
                 </div>
@@ -307,6 +313,26 @@ const RideDetail: React.FC = () => {
 
           {/* Participants section */}
           <RsvpList rideId={ride.id} refreshTrigger={rsvpRefreshTrigger} />
+
+          {/* Comments section */}
+          <div className="bg-white shadow rounded-lg overflow-hidden">
+            <div className="px-4 py-4 sm:px-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6">Discussion</h2>
+              
+              <div className="space-y-6">
+                <CommentForm 
+                  rideId={ride.id} 
+                  onCommentAdded={handleCommentAdded} 
+                />
+                
+                <CommentList 
+                  rideId={ride.id} 
+                  onCommentAdded={handleCommentAdded}
+                  key={commentRefreshTrigger}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Sidebar */}
