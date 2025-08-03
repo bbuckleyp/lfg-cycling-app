@@ -4,8 +4,8 @@ import { subHours, addHours } from 'date-fns';
 const prisma = new PrismaClient();
 
 export interface CreateNotificationData {
-  user_id: number;
-  ride_id: number;
+  userId: number;
+  rideId: number;
   type: 'ride_reminder' | 'ride_updated' | 'ride_cancelled' | 'new_participant' | 'participant_left';
   title: string;
   message: string;
@@ -205,8 +205,8 @@ class NotificationService {
     }
 
     return await this.createNotification({
-      user_id: organizerId,
-      ride_id: rideId,
+      userId: organizerId,
+      rideId: rideId,
       type: 'new_participant',
       title: `New Participant: ${ride.title}`,
       message: `${participantName} has joined your ride "${ride.title}"!`,
@@ -224,8 +224,8 @@ class NotificationService {
     }
 
     return await this.createNotification({
-      user_id: organizerId,
-      ride_id: rideId,
+      userId: organizerId,
+      rideId: rideId,
       type: 'participant_left',
       title: `Participant Left: ${ride.title}`,
       message: `${participantName} has left your ride "${ride.title}".`,

@@ -114,9 +114,15 @@ export class StravaService {
 
 
       return response.data;
-    } catch (error) {
-      console.error('Error fetching routes:', error);
-      throw new Error('Failed to fetch routes');
+    } catch (error: any) {
+      console.error('Error fetching routes:', error?.response?.data || error?.message || error);
+      if (error?.response?.status === 401) {
+        throw new Error('Strava authentication expired. Please reconnect to Strava.');
+      }
+      if (error?.response?.status === 403) {
+        throw new Error('Access to Strava routes denied. Please check your Strava permissions.');
+      }
+      throw new Error(`Failed to fetch routes: ${error?.response?.data?.message || error?.message || 'Unknown error'}`);
     }
   }
 

@@ -52,6 +52,7 @@ export interface RideWithDetails extends Ride {
     polyline?: string;
   };
   rsvpCount: number;
+  commentCount: number;
   userRsvpStatus?: 'going' | 'maybe' | 'not_going';
 }
 

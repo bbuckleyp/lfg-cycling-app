@@ -83,10 +83,12 @@ export class RideService {
                 status: 'going',
               },
             },
+            comments: true,
           },
         },
       },
     });
+
 
     return {
       id: ride.id,
@@ -118,6 +120,7 @@ export class RideService {
       createdAt: ride.created_at.toISOString(),
       updatedAt: ride.updated_at.toISOString(),
       rsvpCount: ride._count.rsvps,
+      commentCount: ride._count.comments,
     };
   }
 
@@ -150,6 +153,7 @@ export class RideService {
                 status: 'going',
               },
             },
+            comments: true,
           },
         },
         rsvps: userId ? {
@@ -199,6 +203,7 @@ export class RideService {
       createdAt: ride.created_at.toISOString(),
       updatedAt: ride.updated_at.toISOString(),
       rsvpCount: ride._count.rsvps,
+      commentCount: ride._count.comments,
       userRsvpStatus: userRsvp?.status as 'going' | 'maybe' | 'not_going' | undefined,
     };
   }
@@ -265,6 +270,7 @@ export class RideService {
                   status: 'going',
                 },
               },
+              comments: true,
             },
           },
           rsvps: userId ? {
@@ -284,6 +290,8 @@ export class RideService {
 
     const formattedRides = rides.map(ride => {
       const userRsvp = userId && Array.isArray(ride.rsvps) && ride.rsvps[0];
+      
+      
       return {
         id: ride.id,
         title: ride.title,
@@ -313,6 +321,7 @@ export class RideService {
         createdAt: ride.created_at.toISOString(),
         updatedAt: ride.updated_at.toISOString(),
         rsvpCount: ride._count.rsvps,
+      commentCount: ride._count.comments,
         userRsvpStatus: userRsvp?.status as 'going' | 'maybe' | 'not_going' | undefined,
       };
     });
@@ -373,6 +382,7 @@ export class RideService {
                   status: 'going',
                 },
               },
+              comments: true,
             },
           },
         },
@@ -409,6 +419,7 @@ export class RideService {
       createdAt: ride.created_at.toISOString(),
       updatedAt: ride.updated_at.toISOString(),
       rsvpCount: ride._count.rsvps,
+      commentCount: ride._count.comments,
     }));
 
     return {
@@ -536,6 +547,7 @@ export class RideService {
                 status: 'going',
               },
             },
+            comments: true,
           },
         },
       },
@@ -584,6 +596,7 @@ export class RideService {
       createdAt: ride.created_at.toISOString(),
       updatedAt: ride.updated_at.toISOString(),
       rsvpCount: ride._count.rsvps,
+      commentCount: ride._count.comments,
     };
   }
 
@@ -648,6 +661,7 @@ export class RideService {
                 status: 'going',
               },
             },
+            comments: true,
           },
         },
       },
@@ -679,6 +693,7 @@ export class RideService {
       createdAt: ride.created_at.toISOString(),
       updatedAt: ride.updated_at.toISOString(),
       rsvpCount: ride._count.rsvps,
+      commentCount: ride._count.comments,
     };
   }
 

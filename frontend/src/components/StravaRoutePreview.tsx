@@ -36,6 +36,15 @@ const StravaRoutePreview: React.FC<StravaRoutePreviewProps> = ({
           position: relative !important;
           z-index: 0 !important;
         }
+        /* Hide elevation profile graph while keeping elevation data */
+        .strava-embed-placeholder .elevation-profile,
+        .strava-embed-placeholder .elevation-chart,
+        .strava-embed-placeholder [class*="elevation-graph"],
+        .strava-embed-placeholder [class*="elevation-profile"],
+        .strava-embed-placeholder svg[class*="elevation"] {
+          display: none !important;
+          visibility: hidden !important;
+        }
       `;
       document.head.appendChild(style);
     }
@@ -63,7 +72,7 @@ const StravaRoutePreview: React.FC<StravaRoutePreviewProps> = ({
     embedDiv.setAttribute('data-full-width', 'true');
     embedDiv.setAttribute('data-style', 'standard');
     embedDiv.setAttribute('data-surface-type', 'true');
-    embedDiv.setAttribute('data-hide-elevation', 'true');
+    embedDiv.setAttribute('data-hide-elevation', 'false');
     embedDiv.setAttribute('data-from-embed', 'true');
 
     containerRef.current.appendChild(embedDiv);
