@@ -7,22 +7,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum EventType {
+  ride
+  race
+}
+
+enum Pace {
+  social
+  tempo
+  race
+}
+
+enum EventStatus {
+  active
+  cancelled
+  completed
+}
+
+enum RsvpStatus {
+  going
+  maybe
+  not_going
+}
+
+enum ExperienceLevel {
+  beginner
+  intermediate
+  advanced
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model comments {
   id         Int      @id @default(autoincrement())
-  ride_id    Int
+  event_id   Int
   user_id    Int
   content    String
   created_at DateTime @default(now())
   updated_at DateTime @default(now())
-  rides      rides    @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  events     events   @relation(fields: [event_id], references: [id], onDelete: Cascade)
   users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model notifications {
   id         Int       @id @default(autoincrement())
   user_id    Int
-  ride_id    Int
+  event_id   Int?
   type       String
   title      String
   message    String
@@ -30,13 +59,14 @@ model notifications {
   send_at    DateTime?
   sent_at    DateTime?
   created_at DateTime  @default(now())
-  rides      rides     @relation(fields: [ride_id], references: [id], onDelete: Cascade)
+  events     events?   @relation(fields: [event_id], references: [id], onDelete: Cascade)
   users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model rides {
+model events {
   id                    Int             @id @default(autoincrement())
+  event_type            EventType
   organizer_id          Int
   route_id              Int?
   title                 String
@@ -44,9 +74,9 @@ model rides {
   start_date            DateTime        @db.Date
   start_time            DateTime        @db.Time(6)
   start_location        String
-  pace                  String
+  pace                  Pace
   is_public             Boolean         @default(true)
-  status                String          @default("active")
+  status                EventStatus     @default(active)
   distance_meters       Int?
   elevation_gain_meters Int?
   created_at            DateTime        @default(now())
@@ -70,42 +100,42 @@ model routes {
   estimated_moving_time Int?
   difficulty_level      String?
   created_at            DateTime @default(now())
-  rides                 rides[]
+  events                events[]
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model rsvps {
-  id         Int      @id @default(autoincrement())
-  ride_id    Int
+  id         Int        @id @default(autoincrement())
+  event_id   Int
   user_id    Int
-  status     String   @default("going")
+  status     RsvpStatus @default(going)
   message    String?
-  created_at DateTime @default(now())
-  updated_at DateTime @default(now())
-  rides      rides    @relation(fields: [ride_id], references: [id], onDelete: Cascade)
-  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime   @default(now())
+  updated_at DateTime   @default(now())
+  events     events     @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  users      users      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@unique([ride_id, user_id])
+  @@unique([event_id, user_id])
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model users {
-  id                   Int             @id @default(autoincrement())
-  email                String          @unique
+  id                   Int              @id @default(autoincrement())
+  email                String           @unique
   password_hash        String
   first_name           String
   last_name            String
-  strava_user_id       BigInt?         @unique
+  strava_user_id       BigInt?          @unique
   strava_access_token  String?
   strava_refresh_token String?
   profile_photo_url    String?
   location             String?
   bike_type            String?
-  experience_level     String?
-  created_at           DateTime        @default(now())
-  updated_at           DateTime        @default(now())
+  experience_level     ExperienceLevel?
+  created_at           DateTime         @default(now())
+  updated_at           DateTime         @default(now())
   comments             comments[]
   notifications        notifications[]
-  rides                rides[]
+  events               events[]
   rsvps                rsvps[]
 }

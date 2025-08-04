@@ -6,7 +6,7 @@ dotenv.config();
 
 /**
  * Background process to handle notification management:
- * 1. Create ride reminders for upcoming rides
+ * 1. Create event reminders for upcoming events
  * 2. Send pending notifications
  * 
  * This script should be run via cron job every hour or so.
@@ -15,15 +15,15 @@ async function processNotifications() {
   console.log('🔔 Starting notification processing...');
   
   try {
-    // Create reminders for upcoming rides
-    console.log('📅 Creating ride reminders...');
-    await notificationService.createUpcomingRideReminders();
-    console.log('✅ Ride reminders created');
+    // Create reminders for upcoming events
+    console.log('📅 Creating event reminders...');
+    await notificationService.scheduleEventReminders();
+    console.log('✅ Event reminders created');
 
     // Send pending notifications
     console.log('📤 Sending pending notifications...');
-    const sentCount = await notificationService.sendPendingNotifications();
-    console.log(`✅ Sent ${sentCount} notifications`);
+    await notificationService.processPendingNotifications();
+    console.log('✅ Pending notifications processed');
 
     console.log('🎉 Notification processing completed successfully');
   } catch (error) {

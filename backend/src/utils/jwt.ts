@@ -8,7 +8,12 @@ export const generateToken = (payload: { userId: number; email: string }): strin
   if (!JWT_SECRET || JWT_SECRET === 'fallback-secret-key') {
     throw new Error('JWT_SECRET is not configured');
   }
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  // Include both id and userId for backwards compatibility
+  const tokenPayload = {
+    ...payload,
+    id: payload.userId
+  };
+  return jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions);
 };
 
 export const verifyToken = (token: string): JwtPayload => {

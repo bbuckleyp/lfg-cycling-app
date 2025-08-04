@@ -5,14 +5,14 @@ const prisma = new PrismaClient();
 
 export interface CreateNotificationData {
   userId: number;
-  rideId: number;
-  type: 'ride_reminder' | 'ride_updated' | 'ride_cancelled' | 'new_participant' | 'participant_left';
+  eventId?: number;
+  type: 'event_reminder' | 'event_updated' | 'event_cancelled' | 'new_participant' | 'participant_left';
   title: string;
   message: string;
   sendAt?: Date;
 }
 
-export interface NotificationWithRide {
+export interface NotificationWithEvent {
   id: number;
   type: string;
   title: string;
@@ -21,9 +21,10 @@ export interface NotificationWithRide {
   created_at: Date;
   send_at: Date | null;
   sent_at: Date | null;
-  ride: {
+  event: {
     id: number;
     title: string;
+    eventType: string;
     startDate: Date;
     startTime: Date;
     startLocation: string;
@@ -39,7 +40,7 @@ class NotificationService {
     return await prisma.notifications.create({
       data: {
         user_id: data.userId,
-        ride_id: data.rideId,
+        event_id: data.eventId,
         type: data.type,
         title: data.title,
         message: data.message,
@@ -48,11 +49,13 @@ class NotificationService {
     });
   }
 
-  async getUserNotifications(userId: number, limit = 50, offset = 0): Promise<NotificationWithRide[]> {
-    return await prisma.notifications.findMany({
-      where: { user_id: userId },
+  async getUserNotifications(userId: number): Promise<NotificationWithEvent[]> {
+    const notifications = await prisma.notifications.findMany({
+      where: {
+        user_id: userId,
+      },
       include: {
-        ride: {
+        events: {
           include: {
             users: {
               select: {
@@ -63,10 +66,34 @@ class NotificationService {
           },
         },
       },
-      orderBy: { created_at: 'desc' },
-      take: limit,
-      skip: offset,
+      orderBy: {
+        created_at: 'desc',
+      },
+      take: 50,
     });
+
+    return notifications.map(notification => ({
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      is_read: notification.is_read,
+      created_at: notification.created_at,
+      send_at: notification.send_at,
+      sent_at: notification.sent_at,
+      event: notification.events ? {
+        id: notification.events.id,
+        title: notification.events.title,
+        eventType: notification.events.event_type,
+        startDate: notification.events.start_date,
+        startTime: notification.events.start_time,
+        startLocation: notification.events.start_location,
+        organizer: {
+          firstName: notification.events.users.first_name,
+          lastName: notification.events.users.last_name,
+        },
+      } : null as any,
+    }));
   }
 
   async getUnreadCount(userId: number): Promise<number> {
@@ -78,11 +105,11 @@ class NotificationService {
     });
   }
 
-  async markAsRead(notificationId: number, userId: number) {
-    return await prisma.notifications.updateMany({
+  async markAsRead(notificationId: number, userId: number): Promise<void> {
+    await prisma.notifications.updateMany({
       where: {
         id: notificationId,
-        user_id: userId, // Ensure user can only mark their own notifications as read
+        user_id: userId,
       },
       data: {
         is_read: true,
@@ -90,8 +117,8 @@ class NotificationService {
     });
   }
 
-  async markAllAsRead(userId: number) {
-    return await prisma.notifications.updateMany({
+  async markAllAsRead(userId: number): Promise<void> {
+    await prisma.notifications.updateMany({
       where: {
         user_id: userId,
         is_read: false,
@@ -102,249 +129,168 @@ class NotificationService {
     });
   }
 
-  async scheduleRideReminder(rideId: number, userIds: number[], reminderTime: Date) {
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
-      include: {
-        users: {
-          select: {
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
-
-    if (!ride) {
-      throw new Error('Ride not found');
-    }
-
-    const notifications = userIds.map(userId => ({
-      user_id: userId,
-      ride_id: rideId,
-      type: 'ride_reminder' as const,
-      title: `Ride Reminder: ${ride.title}`,
-      message: `Don't forget about the ride "${ride.title}" organized by ${ride.users.first_name} ${ride.users.last_name} tomorrow at ${ride.start_time}!`,
-      send_at: reminderTime,
-    }));
-
-    return await prisma.notifications.createMany({
-      data: notifications,
-    });
-  }
-
-  async notifyRideUpdated(rideId: number, userIds: number[], changes: string[]) {
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
-      include: {
-        users: {
-          select: {
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
-
-    if (!ride) {
-      throw new Error('Ride not found');
-    }
-
-    const changesText = changes.join(', ');
-    const notifications = userIds.map(userId => ({
-      user_id: userId,
-      ride_id: rideId,
-      type: 'ride_updated' as const,
-      title: `Ride Updated: ${ride.title}`,
-      message: `The ride "${ride.title}" has been updated. Changes: ${changesText}`,
-    }));
-
-    return await prisma.notifications.createMany({
-      data: notifications,
-    });
-  }
-
-  async notifyRideCancelled(rideId: number, userIds: number[]) {
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
-      include: {
-        users: {
-          select: {
-            first_name: true,
-            last_name: true,
-          },
-        },
-      },
-    });
-
-    if (!ride) {
-      throw new Error('Ride not found');
-    }
-
-    const notifications = userIds.map(userId => ({
-      user_id: userId,
-      ride_id: rideId,
-      type: 'ride_cancelled' as const,
-      title: `Ride Cancelled: ${ride.title}`,
-      message: `Unfortunately, the ride "${ride.title}" organized by ${ride.users.first_name} ${ride.users.last_name} has been cancelled.`,
-    }));
-
-    return await prisma.notifications.createMany({
-      data: notifications,
-    });
-  }
-
-  async notifyNewParticipant(rideId: number, organizerId: number, participantName: string) {
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
-      select: { title: true },
-    });
-
-    if (!ride) {
-      throw new Error('Ride not found');
-    }
-
-    return await this.createNotification({
-      userId: organizerId,
-      rideId: rideId,
-      type: 'new_participant',
-      title: `New Participant: ${ride.title}`,
-      message: `${participantName} has joined your ride "${ride.title}"!`,
-    });
-  }
-
-  async notifyParticipantLeft(rideId: number, organizerId: number, participantName: string) {
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
-      select: { title: true },
-    });
-
-    if (!ride) {
-      throw new Error('Ride not found');
-    }
-
-    return await this.createNotification({
-      userId: organizerId,
-      rideId: rideId,
-      type: 'participant_left',
-      title: `Participant Left: ${ride.title}`,
-      message: `${participantName} has left your ride "${ride.title}".`,
-    });
-  }
-
-  // Background job to create ride reminders for upcoming rides
-  async createUpcomingRideReminders() {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    
-    const dayAfter = new Date(tomorrow);
-    dayAfter.setDate(dayAfter.getDate() + 1);
-
-    // Find rides happening tomorrow that don't already have reminders
-    const upcomingRides = await prisma.rides.findMany({
+  // Event-specific notification methods
+  async notifyEventUpdated(eventId: number, organizerId: number): Promise<void> {
+    // Get all participants except organizer
+    const participants = await prisma.rsvps.findMany({
       where: {
-        startDate: {
-          gte: tomorrow,
-          lt: dayAfter,
+        event_id: eventId,
+        user_id: { not: organizerId },
+        status: { in: ['going', 'maybe'] },
+      },
+      include: {
+        events: {
+          select: {
+            title: true,
+            event_type: true,
+          },
+        },
+      },
+    });
+
+    for (const participant of participants) {
+      await this.createNotification({
+        userId: participant.user_id,
+        eventId: eventId,
+        type: 'event_updated',
+        title: `${participant.events.event_type === 'race' ? 'Race' : 'Ride'} Updated`,
+        message: `"${participant.events.title}" has been updated by the organizer.`,
+      });
+    }
+  }
+
+  async notifyEventCancelled(eventId: number, organizerId: number): Promise<void> {
+    // Get all participants except organizer
+    const participants = await prisma.rsvps.findMany({
+      where: {
+        event_id: eventId,
+        user_id: { not: organizerId },
+        status: { in: ['going', 'maybe'] },
+      },
+      include: {
+        events: {
+          select: {
+            title: true,
+            event_type: true,
+          },
+        },
+      },
+    });
+
+    for (const participant of participants) {
+      await this.createNotification({
+        userId: participant.user_id,
+        eventId: eventId,
+        type: 'event_cancelled',
+        title: `${participant.events.event_type === 'race' ? 'Race' : 'Ride'} Cancelled`,
+        message: `"${participant.events.title}" has been cancelled by the organizer.`,
+      });
+    }
+  }
+
+  async notifyNewEventParticipant(eventId: number, organizerId: number, participantName: string): Promise<void> {
+    const event = await prisma.events.findUnique({
+      where: { id: eventId },
+      select: { title: true, event_type: true },
+    });
+
+    if (event) {
+      await this.createNotification({
+        userId: organizerId,
+        eventId: eventId,
+        type: 'new_participant',
+        title: `New ${event.event_type === 'race' ? 'Race' : 'Ride'} Participant`,
+        message: `${participantName} has joined "${event.title}".`,
+      });
+    }
+  }
+
+  async notifyEventParticipantLeft(eventId: number, organizerId: number, participantName: string): Promise<void> {
+    const event = await prisma.events.findUnique({
+      where: { id: eventId },
+      select: { title: true, event_type: true },
+    });
+
+    if (event) {
+      await this.createNotification({
+        userId: organizerId,
+        eventId: eventId,
+        type: 'participant_left',
+        title: `${event.event_type === 'race' ? 'Race' : 'Ride'} Participant Left`,
+        message: `${participantName} has left "${event.title}".`,
+      });
+    }
+  }
+
+  async scheduleEventReminders(): Promise<void> {
+    // Find events starting in 24 hours that don't have reminders scheduled yet
+    const tomorrow = addHours(new Date(), 24);
+    const reminderWindow = subHours(tomorrow, 1); // 1 hour window
+
+    const events = await prisma.events.findMany({
+      where: {
+        start_date: {
+          gte: reminderWindow,
+          lte: addHours(reminderWindow, 2),
         },
         status: 'active',
-        // Only rides that don't already have reminders scheduled
-        notifications: {
-          none: {
-            type: 'ride_reminder',
-            send_at: {
-              not: null,
-            },
-          },
-        },
       },
       include: {
         rsvps: {
           where: {
-            status: 'going',
+            status: { in: ['going', 'maybe'] },
           },
-          include: {
-            user: true,
-          },
-        },
-        users: {
           select: {
-            id: true,
-            first_name: true,
-            last_name: true,
+            user_id: true,
           },
         },
       },
     });
 
-    for (const ride of upcomingRides) {
-      // Schedule reminder for 24 hours before ride
-      const reminderTime = subHours(new Date(`${ride.startDate}T${ride.startTime}`), 24);
-      
-      // Only schedule if the reminder time is in the future
-      if (reminderTime > new Date()) {
-        const participantIds = ride.rsvps.map(rsvp => rsvp.userId);
-        
-        // Include organizer in reminders
-        if (!participantIds.includes(ride.usersId)) {
-          participantIds.push(ride.usersId);
-        }
+    for (const event of events) {
+      // Check if reminders already exist
+      const existingReminders = await prisma.notifications.count({
+        where: {
+          event_id: event.id,
+          type: 'event_reminder',
+        },
+      });
 
-        if (participantIds.length > 0) {
-          await this.scheduleRideReminder(ride.id, participantIds, reminderTime);
+      if (existingReminders === 0) {
+        // Schedule reminders for all participants
+        for (const rsvp of event.rsvps) {
+          const reminderTime = subHours(new Date(`${event.start_date.toISOString().split('T')[0]}T${event.start_time.toISOString().split('T')[1]}`), 24);
+          
+          await this.createNotification({
+            userId: rsvp.user_id,
+            eventId: event.id,
+            type: 'event_reminder',
+            title: `${event.event_type === 'race' ? 'Race' : 'Ride'} Reminder`,
+            message: `Don't forget about "${event.title}" tomorrow at ${event.start_time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+            sendAt: reminderTime,
+          });
         }
       }
     }
   }
 
-  // Send pending notifications (would be called by a cron job)
-  async sendPendingNotifications() {
-    const now = new Date();
-    
+  async processPendingNotifications(): Promise<void> {
     const pendingNotifications = await prisma.notifications.findMany({
       where: {
         send_at: {
-          lte: now,
+          lte: new Date(),
         },
         sent_at: null,
-      },
-      include: {
-        user: {
-          select: {
-            email: true,
-            firstName: true,
-          },
-        },
-        ride: {
-          select: {
-            title: true,
-            startDate: true,
-            startTime: true,
-          },
-        },
       },
     });
 
     for (const notification of pendingNotifications) {
-      try {
-        // In a real app, you would send email/push notification here
-        console.log(`Sending notification to ${notification.user.email}:`, {
-          title: notification.title,
-          message: notification.message,
-        });
-
-        // Mark as sent
-        await prisma.notifications.update({
-          where: { id: notification.id },
-          data: { sent_at: now },
-        });
-      } catch (error) {
-        console.error(`Failed to send notification ${notification.id}:`, error);
-      }
+      // Mark as sent (in a real app, you'd send via email/push notification here)
+      await prisma.notifications.update({
+        where: { id: notification.id },
+        data: { sent_at: new Date() },
+      });
     }
-
-    return pendingNotifications.length;
   }
 }
 

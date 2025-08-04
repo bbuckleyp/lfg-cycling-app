@@ -4,19 +4,19 @@ import { CreateCommentRequest, UpdateCommentRequest, CommentWithUser } from '../
 const prisma = new PrismaClient();
 
 export class CommentService {
-  async createComment(rideId: number, userId: number, data: CreateCommentRequest) {
-    // Check if ride exists
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
+  async createComment(eventId: number, userId: number, data: CreateCommentRequest) {
+    // Check if event exists
+    const event = await prisma.events.findUnique({
+      where: { id: eventId },
     });
 
-    if (!ride) {
-      throw new Error('Ride not found');
+    if (!event) {
+      throw new Error('Event not found');
     }
 
     const comment = await prisma.comments.create({
       data: {
-        ride_id: rideId,
+        event_id: eventId,
         user_id: userId,
         content: data.content,
       },
@@ -35,7 +35,7 @@ export class CommentService {
 
     return {
       id: comment.id,
-      rideId: comment.ride_id,
+      eventId: comment.event_id,
       userId: comment.user_id,
       content: comment.content,
       createdAt: comment.created_at.toISOString(),
@@ -44,15 +44,15 @@ export class CommentService {
         id: comment.users.id,
         firstName: comment.users.first_name,
         lastName: comment.users.last_name,
-        profilePhotoUrl: comment.users.profile_photo_url,
+        profilePhotoUrl: comment.users.profile_photo_url || undefined,
         experienceLevel: comment.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
       },
     };
   }
 
-  async getRideComments(rideId: number): Promise<CommentWithUser[]> {
+  async getEventComments(eventId: number): Promise<CommentWithUser[]> {
     const comments = await prisma.comments.findMany({
-      where: { ride_id: rideId },
+      where: { event_id: eventId },
       include: {
         users: {
           select: {
@@ -64,14 +64,12 @@ export class CommentService {
           },
         },
       },
-      orderBy: {
-        created_at: 'asc',
-      },
+      orderBy: { created_at: 'asc' },
     });
 
     return comments.map(comment => ({
       id: comment.id,
-      rideId: comment.ride_id,
+      eventId: comment.event_id,
       userId: comment.user_id,
       content: comment.content,
       createdAt: comment.created_at.toISOString(),
@@ -80,7 +78,7 @@ export class CommentService {
         id: comment.users.id,
         firstName: comment.users.first_name,
         lastName: comment.users.last_name,
-        profilePhotoUrl: comment.users.profile_photo_url,
+        profilePhotoUrl: comment.users.profile_photo_url || undefined,
         experienceLevel: comment.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
       },
     }));
@@ -97,7 +95,7 @@ export class CommentService {
     }
 
     if (existingComment.user_id !== userId) {
-      throw new Error('Only the comment author can update this comment');
+      throw new Error('You can only update your own comments');
     }
 
     const comment = await prisma.comments.update({
@@ -121,7 +119,7 @@ export class CommentService {
 
     return {
       id: comment.id,
-      rideId: comment.ride_id,
+      eventId: comment.event_id,
       userId: comment.user_id,
       content: comment.content,
       createdAt: comment.created_at.toISOString(),
@@ -130,7 +128,7 @@ export class CommentService {
         id: comment.users.id,
         firstName: comment.users.first_name,
         lastName: comment.users.last_name,
-        profilePhotoUrl: comment.users.profile_photo_url,
+        profilePhotoUrl: comment.users.profile_photo_url || undefined,
         experienceLevel: comment.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
       },
     };
@@ -147,12 +145,49 @@ export class CommentService {
     }
 
     if (existingComment.user_id !== userId) {
-      throw new Error('Only the comment author can delete this comment');
+      throw new Error('You can only delete your own comments');
     }
 
     await prisma.comments.delete({
       where: { id: commentId },
     });
+  }
+
+  async getCommentById(commentId: number): Promise<CommentWithUser | null> {
+    const comment = await prisma.comments.findUnique({
+      where: { id: commentId },
+      include: {
+        users: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            profile_photo_url: true,
+            experience_level: true,
+          },
+        },
+      },
+    });
+
+    if (!comment) {
+      return null;
+    }
+
+    return {
+      id: comment.id,
+      eventId: comment.event_id,
+      userId: comment.user_id,
+      content: comment.content,
+      createdAt: comment.created_at.toISOString(),
+      updatedAt: comment.updated_at.toISOString(),
+      user: {
+        id: comment.users.id,
+        firstName: comment.users.first_name,
+        lastName: comment.users.last_name,
+        profilePhotoUrl: comment.users.profile_photo_url || undefined,
+        experienceLevel: comment.users.experience_level as 'beginner' | 'intermediate' | 'advanced' | undefined,
+      },
+    };
   }
 }
 

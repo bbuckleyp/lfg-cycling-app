@@ -5,10 +5,10 @@ import { notificationService } from './notificationService';
 const prisma = new PrismaClient();
 
 export class RsvpService {
-  async createOrUpdateRsvp(rideId: number, userId: number, data: CreateRsvpRequest) {
-    // Check if ride exists and is still active
-    const ride = await prisma.rides.findUnique({
-      where: { id: rideId },
+  async createOrUpdateRsvp(eventId: number, userId: number, data: CreateRsvpRequest) {
+    // Check if event exists and is still active
+    const event = await prisma.events.findUnique({
+      where: { id: eventId },
       include: {
         _count: {
           select: {
@@ -27,25 +27,24 @@ export class RsvpService {
       },
     });
 
-    if (!ride) {
-      throw new Error('Ride not found');
+    if (!event) {
+      throw new Error('Event not found');
     }
 
-    if (ride.status !== 'active') {
-      throw new Error('Cannot RSVP to inactive ride');
+    if (event.status !== 'active') {
+      throw new Error('Cannot RSVP to inactive event');
     }
 
-
-    // Check if user is trying to RSVP to their own ride
-    if (ride.organizer_id === userId) {
-      throw new Error('Cannot RSVP to your own ride');
+    // Check if user is trying to RSVP to their own event
+    if (event.organizer_id === userId) {
+      throw new Error('Cannot RSVP to your own event');
     }
 
     // Check if this is a new RSVP or status change
     const existingRsvp = await prisma.rsvps.findUnique({
       where: {
-        ride_id_user_id: {
-          ride_id: rideId,
+        event_id_user_id: {
+          event_id: eventId,
           user_id: userId,
         },
       },
@@ -62,13 +61,13 @@ export class RsvpService {
     const isNewParticipant = !existingRsvp && data.status === 'going';
     const wasGoing = existingRsvp?.status === 'going';
     const isNowGoing = data.status === 'going';
-    const isLeavingRide = existingRsvp && (data.status === 'not_going' || (wasGoing && !isNowGoing));
+    const isLeavingEvent = existingRsvp && (data.status === 'not_going' || (wasGoing && !isNowGoing));
 
     // Create or update RSVP
     const rsvp = await prisma.rsvps.upsert({
       where: {
-        ride_id_user_id: {
-          ride_id: rideId,
+        event_id_user_id: {
+          event_id: eventId,
           user_id: userId,
         },
       },
@@ -78,7 +77,7 @@ export class RsvpService {
         updated_at: new Date(),
       },
       create: {
-        ride_id: rideId,
+        event_id: eventId,
         user_id: userId,
         status: data.status,
         message: data.message,
@@ -99,19 +98,19 @@ export class RsvpService {
     // Send notifications to organizer
     try {
       if (isNewParticipant || (!existingRsvp && isNowGoing)) {
-        await notificationService.notifyNewParticipant(
-          rideId,
-          ride.organizer_id,
+        await notificationService.notifyNewEventParticipant(
+          eventId,
+          event.organizer_id,
           `${rsvp.users.first_name} ${rsvp.users.last_name}`
         );
-      } else if (isLeavingRide) {
+      } else if (isLeavingEvent) {
         const userName = existingRsvp?.users ? 
           `${existingRsvp.users.first_name} ${existingRsvp.users.last_name}` :
           `${rsvp.users.first_name} ${rsvp.users.last_name}`;
         
-        await notificationService.notifyParticipantLeft(
-          rideId,
-          ride.organizer_id,
+        await notificationService.notifyEventParticipantLeft(
+          eventId,
+          event.organizer_id,
           userName
         );
       }
@@ -122,10 +121,10 @@ export class RsvpService {
 
     return {
       id: rsvp.id,
-      rideId: rsvp.ride_id,
+      eventId: rsvp.event_id,
       userId: rsvp.user_id,
       status: rsvp.status as 'going' | 'maybe' | 'not_going',
-      message: rsvp.message,
+      message: rsvp.message || undefined,
       createdAt: rsvp.created_at.toISOString(),
       updatedAt: rsvp.updated_at.toISOString(),
       user: {
@@ -138,8 +137,8 @@ export class RsvpService {
     };
   }
 
-  async getRideRsvps(rideId: number, status?: string): Promise<RsvpWithUser[]> {
-    const whereClause: any = { ride_id: rideId };
+  async getEventRsvps(eventId: number, status?: string): Promise<RsvpWithUser[]> {
+    const whereClause: any = { event_id: eventId };
     if (status) {
       whereClause.status = status;
     }
@@ -165,10 +164,10 @@ export class RsvpService {
 
     return rsvps.map(rsvp => ({
       id: rsvp.id,
-      rideId: rsvp.ride_id,
+      eventId: rsvp.event_id,
       userId: rsvp.user_id,
       status: rsvp.status as 'going' | 'maybe' | 'not_going',
-      message: rsvp.message,
+      message: rsvp.message || undefined,
       createdAt: rsvp.created_at.toISOString(),
       updatedAt: rsvp.updated_at.toISOString(),
       user: {
@@ -181,11 +180,11 @@ export class RsvpService {
     }));
   }
 
-  async getUserRsvp(rideId: number, userId: number) {
+  async getUserRsvp(eventId: number, userId: number) {
     const rsvp = await prisma.rsvps.findUnique({
       where: {
-        ride_id_user_id: {
-          ride_id: rideId,
+        event_id_user_id: {
+          event_id: eventId,
           user_id: userId,
         },
       },
@@ -208,10 +207,10 @@ export class RsvpService {
 
     return {
       id: rsvp.id,
-      rideId: rsvp.ride_id,
+      eventId: rsvp.event_id,
       userId: rsvp.user_id,
       status: rsvp.status as 'going' | 'maybe' | 'not_going',
-      message: rsvp.message,
+      message: rsvp.message || undefined,
       createdAt: rsvp.created_at.toISOString(),
       updatedAt: rsvp.updated_at.toISOString(),
       user: {
@@ -224,12 +223,12 @@ export class RsvpService {
     };
   }
 
-  async deleteRsvp(rideId: number, userId: number) {
+  async deleteRsvp(eventId: number, userId: number) {
     // Check if RSVP exists
     const existingRsvp = await prisma.rsvps.findUnique({
       where: {
-        ride_id_user_id: {
-          ride_id: rideId,
+        event_id_user_id: {
+          event_id: eventId,
           user_id: userId,
         },
       },
@@ -241,18 +240,18 @@ export class RsvpService {
 
     await prisma.rsvps.delete({
       where: {
-        ride_id_user_id: {
-          ride_id: rideId,
+        event_id_user_id: {
+          event_id: eventId,
           user_id: userId,
         },
       },
     });
   }
 
-  async getRsvpStats(rideId: number) {
+  async getRsvpStats(eventId: number) {
     const stats = await prisma.rsvps.groupBy({
       by: ['status'],
-      where: { ride_id: rideId },
+      where: { event_id: eventId },
       _count: {
         status: true,
       },
@@ -273,3 +272,5 @@ export class RsvpService {
     return result;
   }
 }
+
+export const rsvpService = new RsvpService();

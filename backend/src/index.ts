@@ -8,7 +8,7 @@ import helmet from 'helmet';
 import authRoutes from './routes/auth';
 import stravaRoutes from './routes/strava';
 import routesRoutes from './routes/routes';
-import ridesRoutes from './routes/rides';
+import eventsRoutes from './routes/events';
 import rsvpRoutes from './routes/rsvps';
 import commentRoutes from './routes/comments';
 import { notificationRoutes } from './routes/notifications';
@@ -46,7 +46,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/strava', stravaRoutes);
 app.use('/api/routes', routesRoutes);
-app.use('/api/rides', ridesRoutes);
+app.use('/api/events', eventsRoutes);
 app.use('/api', rsvpRoutes);
 app.use('/api', commentRoutes);
 app.use('/api/notifications', notificationRoutes);

@@ -1,25 +1,24 @@
 import { Router, Request, Response } from 'express';
-import { RsvpService } from '../services/rsvpService';
+import { rsvpService } from '../services/rsvpService';
 import { authenticateToken } from '../middleware/auth';
 import { createRsvpSchema, updateRsvpSchema } from '../utils/validation';
 import { z } from 'zod';
 
 const router = Router();
-const rsvpService = new RsvpService();
 
-// Create or update RSVP for a ride
-router.post('/rides/:rideId/rsvp', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+// Create or update RSVP for an event
+router.post('/events/:eventId/rsvp', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'User not authenticated' });
       return;
     }
 
-    const rideIdSchema = z.string().regex(/^\d+$/, 'Ride ID must be a number');
-    const rideId = parseInt(rideIdSchema.parse(req.params.rideId));
+    const eventIdSchema = z.string().regex(/^\d+$/, 'Event ID must be a number');
+    const eventId = parseInt(eventIdSchema.parse(req.params.eventId));
     const validatedData = createRsvpSchema.parse(req.body);
 
-    const rsvp = await rsvpService.createOrUpdateRsvp(rideId, req.user.userId, validatedData);
+    const rsvp = await rsvpService.createOrUpdateRsvp(eventId, req.user.id, validatedData);
     
     res.json({
       message: 'RSVP updated successfully',
@@ -28,146 +27,132 @@ router.post('/rides/:rideId/rsvp', authenticateToken, async (req: Request, res: 
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
-        error: 'Validation failed',
+        error: 'Validation error',
         details: error.errors,
       });
       return;
     }
+
+    console.error('Error creating/updating RSVP:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update RSVP';
     
-    if (error instanceof Error) {
-      if (error.message === 'Ride not found') {
-        res.status(404).json({ error: 'Ride not found' });
-        return;
-      }
-      if (error.message === 'Cannot RSVP to inactive ride') {
-        res.status(400).json({ error: 'Cannot RSVP to inactive ride' });
-        return;
-      }
-      if (error.message === 'Ride is full') {
-        res.status(400).json({ error: 'Ride is full' });
-        return;
-      }
-      if (error.message === 'Cannot RSVP to your own ride') {
-        res.status(400).json({ error: 'Cannot RSVP to your own ride' });
-        return;
-      }
+    if (errorMessage === 'Event not found') {
+      res.status(404).json({ error: errorMessage });
+    } else if (errorMessage === 'Cannot RSVP to inactive event' || errorMessage === 'Cannot RSVP to your own event') {
+      res.status(400).json({ error: errorMessage });
+    } else {
+      res.status(500).json({ error: 'Failed to update RSVP' });
     }
-    
-    console.error('Error creating RSVP:', error);
-    res.status(500).json({ error: 'Failed to create RSVP' });
   }
 });
 
-// Get all RSVPs for a ride
-router.get('/rides/:rideId/rsvps', async (req: Request, res: Response): Promise<void> => {
+// Get RSVPs for an event
+router.get('/events/:eventId/rsvps', async (req: Request, res: Response): Promise<void> => {
   try {
-    const rideIdSchema = z.string().regex(/^\d+$/, 'Ride ID must be a number');
-    const rideId = parseInt(rideIdSchema.parse(req.params.rideId));
-    const status = req.query.status as string || undefined;
+    const eventIdSchema = z.string().regex(/^\d+$/, 'Event ID must be a number');
+    const eventId = parseInt(eventIdSchema.parse(req.params.eventId));
+    const status = req.query.status as string | undefined;
 
     if (status && !['going', 'maybe', 'not_going'].includes(status)) {
       res.status(400).json({ error: 'Invalid status filter' });
       return;
     }
 
-    const rsvps = await rsvpService.getRideRsvps(rideId, status);
-    
+    const rsvps = await rsvpService.getEventRsvps(eventId, status);
     res.json({ rsvps });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
-        error: 'Invalid ride ID',
+        error: 'Validation error',
         details: error.errors,
       });
       return;
     }
-    
+
     console.error('Error fetching RSVPs:', error);
     res.status(500).json({ error: 'Failed to fetch RSVPs' });
   }
 });
 
-// Get user's RSVP for a specific ride
-router.get('/rides/:rideId/rsvp', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+// Get user's RSVP for an event
+router.get('/events/:eventId/rsvp/me', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'User not authenticated' });
       return;
     }
 
-    const rideIdSchema = z.string().regex(/^\d+$/, 'Ride ID must be a number');
-    const rideId = parseInt(rideIdSchema.parse(req.params.rideId));
+    const eventIdSchema = z.string().regex(/^\d+$/, 'Event ID must be a number');
+    const eventId = parseInt(eventIdSchema.parse(req.params.eventId));
 
-    const rsvp = await rsvpService.getUserRsvp(rideId, req.user.userId);
-    
+    const rsvp = await rsvpService.getUserRsvp(eventId, req.user.id);
     res.json({ rsvp });
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
-        error: 'Invalid ride ID',
+        error: 'Validation error',
         details: error.errors,
       });
       return;
     }
-    
+
     console.error('Error fetching user RSVP:', error);
     res.status(500).json({ error: 'Failed to fetch RSVP' });
   }
 });
 
-// Delete user's RSVP for a ride
-router.delete('/rides/:rideId/rsvp', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+// Get RSVP stats for an event
+router.get('/events/:eventId/rsvp-stats', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const eventIdSchema = z.string().regex(/^\d+$/, 'Event ID must be a number');
+    const eventId = parseInt(eventIdSchema.parse(req.params.eventId));
+
+    const stats = await rsvpService.getRsvpStats(eventId);
+    res.json({ stats });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: error.errors,
+      });
+      return;
+    }
+
+    console.error('Error fetching RSVP stats:', error);
+    res.status(500).json({ error: 'Failed to fetch RSVP stats' });
+  }
+});
+
+// Delete RSVP for an event
+router.delete('/events/:eventId/rsvp', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'User not authenticated' });
       return;
     }
 
-    const rideIdSchema = z.string().regex(/^\d+$/, 'Ride ID must be a number');
-    const rideId = parseInt(rideIdSchema.parse(req.params.rideId));
+    const eventIdSchema = z.string().regex(/^\d+$/, 'Event ID must be a number');
+    const eventId = parseInt(eventIdSchema.parse(req.params.eventId));
 
-    await rsvpService.deleteRsvp(rideId, req.user.userId);
-    
-    res.json({ message: 'RSVP deleted successfully' });
+    await rsvpService.deleteRsvp(eventId, req.user.id);
+    res.status(204).send();
   } catch (error) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
-        error: 'Invalid ride ID',
+        error: 'Validation error',
         details: error.errors,
       });
       return;
     }
-    
-    if (error instanceof Error && error.message === 'RSVP not found') {
-      res.status(404).json({ error: 'RSVP not found' });
-      return;
-    }
-    
+
     console.error('Error deleting RSVP:', error);
-    res.status(500).json({ error: 'Failed to delete RSVP' });
-  }
-});
-
-// Get RSVP statistics for a ride
-router.get('/rides/:rideId/rsvp-stats', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const rideIdSchema = z.string().regex(/^\d+$/, 'Ride ID must be a number');
-    const rideId = parseInt(rideIdSchema.parse(req.params.rideId));
-
-    const stats = await rsvpService.getRsvpStats(rideId);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete RSVP';
     
-    res.json({ stats });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      res.status(400).json({
-        error: 'Invalid ride ID',
-        details: error.errors,
-      });
-      return;
+    if (errorMessage === 'RSVP not found') {
+      res.status(404).json({ error: errorMessage });
+    } else {
+      res.status(500).json({ error: 'Failed to delete RSVP' });
     }
-    
-    console.error('Error fetching RSVP stats:', error);
-    res.status(500).json({ error: 'Failed to fetch RSVP statistics' });
   }
 });
 

@@ -1,6 +1,6 @@
 export interface Rsvp {
   id: number;
-  rideId: number;
+  eventId: number;
   userId: number;
   status: 'going' | 'maybe' | 'not_going';
   message?: string;

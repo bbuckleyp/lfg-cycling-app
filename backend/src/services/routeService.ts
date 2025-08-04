@@ -118,14 +118,14 @@ export class RouteService {
     const route = await this.getRoute(routeId);
     
     // Get usage stats
-    const ridesCount = await prisma.rides.count({
+    const eventsCount = await prisma.events.count({
       where: { route_id: routeId },
     });
 
     return {
       ...route,
       stravaRouteId: route.strava_route_id ? route.strava_route_id.toString() : null,
-      totalRides: ridesCount,
+      totalRides: eventsCount,
       distanceKm: Math.round(route.distance_meters / 1000 * 100) / 100,
       elevationGainM: route.elevation_gain_meters,
       estimatedTimeHours: route.estimated_moving_time ? Math.round(route.estimated_moving_time / 3600 * 100) / 100 : null,
@@ -133,13 +133,13 @@ export class RouteService {
   }
 
   async deleteRoute(routeId: number) {
-    // Check if route is being used by any rides
-    const ridesUsingRoute = await prisma.rides.count({
+    // Check if route is being used by any events
+    const eventsUsingRoute = await prisma.events.count({
       where: { route_id: routeId },
     });
 
-    if (ridesUsingRoute > 0) {
-      throw new Error('Cannot delete route that is being used by rides');
+    if (eventsUsingRoute > 0) {
+      throw new Error('Cannot delete route that is being used by events');
     }
 
     await prisma.routes.delete({

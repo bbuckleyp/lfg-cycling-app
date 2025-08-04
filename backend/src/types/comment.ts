@@ -1,6 +1,6 @@
 export interface Comment {
   id: number;
-  rideId: number;
+  eventId: number;
   userId: number;
   content: string;
   createdAt: string;
