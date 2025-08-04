@@ -1,118 +1,172 @@
-# Strava OAuth Authentication Implementation Plan
+# Security Review of Unified Events Architecture
 
 ## Overview
-Add the ability for users to sign in and sign up using their Strava accounts as an alternative to email/password authentication.
+Comprehensive security review of the unified events architecture code focusing on authentication, authorization, input validation, SQL injection, XSS protection, data exposure, access control, and external dependencies.
 
-## Current State Analysis
-- ✅ Traditional email/password authentication with JWT tokens  
-- ✅ Existing Strava OAuth service for connecting accounts post-login
-- ✅ Strava API credentials configured
-- ✅ Users table has `strava_user_id` field for linking accounts
+## Todo Items
 
-## Implementation Tasks
+### Phase 1: Architecture and Authentication Review
+- [x] Review authentication middleware and JWT implementation
+- [x] Check authorization patterns across event routes
+- [x] Examine user access control mechanisms
+- [x] Validate session management and token handling
 
-### Backend Updates
-- [x] Add new Strava OAuth authentication endpoints (`/auth/strava/auth-url`, `/auth/strava/callback`)
-- [x] Create or update user accounts via Strava profile data
-- [x] Handle existing users who want to link Strava vs new users signing up
-- [x] Ensure proper JWT token generation for Strava-authenticated users
+### Phase 2: Input Validation and Data Security
+- [ ] Review input validation schemas and sanitization
+- [ ] Check for SQL injection vulnerabilities in database queries
+- [ ] Examine XSS protection measures
+- [ ] Validate data exposure in API responses
 
-### Frontend Updates  
-- [x] Add "Sign in with Strava" button to Login page
-- [x] Add "Sign up with Strava" button to Register page
-- [x] Handle Strava OAuth callback and token storage
-- [x] Update API service to support Strava authentication flow
+### Phase 3: Event-Specific Security Review
+- [ ] Review event service authorization logic
+- [ ] Check event routes for proper access control
+- [ ] Examine RSVP and comment security
+- [ ] Validate notification security
 
-### Integration Points
-- [x] Maintain compatibility with existing email/password authentication
-- [x] Handle edge cases (existing email with Strava account, etc.)
-- [x] Preserve existing Strava connection functionality for logged-in users
+### Phase 4: Frontend Security Analysis
+- [ ] Review StravaEmbed component for external script risks
+- [ ] Check EventDetail page for security vulnerabilities
+- [ ] Examine API client security practices
+- [ ] Validate frontend input handling
 
-### Testing
-- [x] Test new user registration via Strava
-- [x] Test existing user login via Strava 
-- [x] Test edge cases and error handling
-- [x] Verify traditional auth still works
+### Phase 5: External Dependencies and Integration Security
+- [ ] Review Strava API integration security
+- [ ] Check external script loading practices
+- [ ] Examine third-party dependency risks
+- [ ] Validate environment variable handling
 
-## Technical Approach
+### Phase 6: Security Recommendations and Documentation
+- [ ] Compile security findings
+- [ ] Provide specific remediation recommendations
+- [ ] Document security best practices
+- [ ] Create security review summary
 
-### Flow for New Users (Sign Up)
-1. User clicks "Sign up with Strava" 
-2. Redirect to Strava OAuth with specific state indicating signup
-3. Callback creates new user account using Strava profile data
-4. Generate JWT token and complete authentication
+## Progress
+- Created security review plan and todo list
+- Completed comprehensive security analysis of all key components
+- Identified several critical security findings
 
-### Flow for Existing Users (Sign In)
-1. User clicks "Sign in with Strava"
-2. Redirect to Strava OAuth with specific state indicating login
-3. Callback finds existing user by `strava_user_id` or email
-4. Generate JWT token and complete authentication
+## Security Findings Summary
 
-### Edge Cases
-- User has account but no Strava connection → Link accounts
-- User tries to sign up with Strava but email already exists → Offer to link accounts
-- User revokes Strava access → Handle gracefully
+### CRITICAL ISSUES
 
-## Implementation Priority
-1. Backend auth endpoints (high priority)
-2. Frontend UI updates (medium priority) 
-3. Edge case handling (medium priority)
-4. Testing (medium priority)
+#### 1. **JWT Secret Configuration Vulnerability** (HIGH RISK)
+**File**: `/Users/bbuckley/Projects/lfg-cycling-app/backend/src/utils/jwt.ts`
+**Issue**: Fallback to weak secret key
+```typescript
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+```
+**Risk**: If JWT_SECRET environment variable is not set, the application falls back to a hardcoded, easily guessable secret. This could allow attackers to forge JWT tokens.
+**Recommendation**: Remove fallback and fail fast if JWT_SECRET is not configured. Add stronger validation.
 
-## Notes
-- Keep implementation simple and focused
-- Maintain existing authentication patterns
-- Ensure security best practices for OAuth flow
-- Follow existing code conventions and patterns
+#### 2. **External Script Loading from Third-Party Domain** (MEDIUM-HIGH RISK)
+**Files**: 
+- `/Users/bbuckley/Projects/lfg-cycling-app/frontend/src/components/StravaEmbed.tsx`
+- `/Users/bbuckley/Projects/lfg-cycling-app/frontend/src/components/StravaRoutePreview.tsx`
+**Issue**: Dynamic loading of external JavaScript from `https://strava-embeds.com/embed.js`
+**Risk**: 
+- Content Security Policy (CSP) bypass
+- Third-party script could be compromised
+- No integrity checking (SRI)
+**Recommendation**: 
+- Implement Content Security Policy
+- Add Subresource Integrity (SRI) hashes
+- Consider hosting the script locally or using iframe sandboxing
 
-## Review
+#### 3. **DOM Manipulation with innerHTML** (MEDIUM RISK)
+**Files**: Same as above
+**Issue**: Direct DOM manipulation using `innerHTML` without sanitization
+**Risk**: Potential XSS if Strava embed content is compromised
+**Recommendation**: Use safer DOM manipulation methods or sanitize content
 
-### Implementation Summary
-The Strava OAuth authentication feature has been successfully implemented with full compatibility maintained for existing email/password authentication. All planned functionality is working correctly.
+### MEDIUM ISSUES
 
-### Changes Made
+#### 4. **Missing Rate Limiting**
+**Files**: All API routes
+**Issue**: No rate limiting implemented on API endpoints
+**Risk**: Brute force attacks, DoS attacks
+**Recommendation**: Implement rate limiting middleware
 
-#### Backend Changes (✅ Completed)
-1. **New Authentication Endpoints**: Added `/api/auth/strava/auth-url` and `/api/auth/strava/callback` endpoints for Strava OAuth flow
-2. **User Creation Logic**: Enhanced `authService.findOrCreateUserFromStrava()` to handle new user registration via Strava profile data
-3. **JWT Token Generation**: Existing JWT token system works seamlessly with Strava-authenticated users
-4. **Database Integration**: Utilizes existing `strava_user_id` field to link Strava accounts
+#### 5. **Inconsistent User ID Field Usage**
+**Files**: Multiple (auth types, notification routes)
+**Issue**: JWT payload contains both `id` and `userId` fields, causing confusion
+**Risk**: Authorization bypass if wrong field is used
+**Recommendation**: Standardize on single user ID field
 
-#### Frontend Changes (✅ Completed) 
-1. **UI Components**: Added "Sign in with Strava" and "Sign up with Strava" buttons to Login and Register pages
-2. **OAuth Flow Handling**: Implemented callback handling and automatic token storage
-3. **API Integration**: Extended existing API service to support new Strava authentication endpoints
+#### 6. **Error Information Disclosure**
+**Files**: Multiple route files
+**Issue**: Generic error handling may leak sensitive information
+**Risk**: Information disclosure
+**Recommendation**: Implement structured error handling with safe error messages
 
-#### Key Features Implemented
-- **New User Signup**: Users can create accounts using only their Strava credentials
-- **Existing User Login**: Users with linked Strava accounts can login directly via Strava
-- **Automatic Account Creation**: Generates temporary email addresses for Strava-only accounts (`strava_{id}@tempmail.com`)
-- **Seamless Token Management**: Uses existing JWT infrastructure for session management
+### LOW ISSUES
 
-### Testing Results (✅ All Passed)
-1. **Traditional Authentication**: Email/password registration and login work perfectly
-2. **Strava URL Generation**: Both signup and login auth URLs generate correctly
-3. **Error Handling**: Invalid actions and missing parameters handled properly
-4. **Existing Functionality**: Strava connection for logged-in users preserved
-5. **Token Authentication**: JWT tokens work for both traditional and Strava users
+#### 7. **Missing Input Sanitization for Display**
+**Issue**: User-generated content (comments, descriptions) not sanitized for display
+**Risk**: Stored XSS if React's built-in protection fails
+**Recommendation**: Additional sanitization layer for user content
 
-### Edge Cases Handled
-- **Strava-only accounts**: Creates accounts without passwords for users who only use Strava
-- **Existing user linking**: Preserved existing `/api/strava/auth-url` endpoint for logged-in users to link accounts
-- **Email conflicts**: Since Strava doesn't provide email, automatic linking by email is not possible, users must link manually when logged in
+## POSITIVE SECURITY PRACTICES IDENTIFIED
 
-### Technical Notes
-- **Type Safety**: Fixed multiple TypeScript compatibility issues between database null values and frontend undefined expectations
-- **Error Resilience**: Backend can run with TypeScript transpile-only mode for development 
-- **Security**: Maintained all existing security practices including JWT validation and bcrypt password hashing
-- **Database Compatibility**: Uses existing database schema without migrations needed
+### ✅ Strong Authentication & Authorization
+- JWT-based authentication properly implemented
+- Authorization checks in place for all protected routes
+- User can only modify their own data (events, comments, RSVPs)
+- Proper organizer-only access control for event management
 
-### Remaining Work
-- **TypeScript Fixes**: Some non-critical type mismatches remain but don't affect functionality
-- **Frontend Testing**: Manual testing of complete OAuth flow in browser recommended
-- **Documentation**: Frontend integration examples could be added to help developers
+### ✅ Input Validation
+- Comprehensive Zod schemas for all user inputs
+- Server-side validation on all endpoints
+- Type-safe database queries using Prisma ORM
+- Proper parameter validation (event IDs, comment IDs, etc.)
 
-### Deployment Status
-- **Backend**: Ready for deployment (working with some TypeScript warnings)
-- **Frontend**: Ready for deployment
-- **Database**: No migrations required, uses existing schema
+### ✅ SQL Injection Protection
+- All database queries use Prisma ORM with parameterized queries
+- No raw SQL queries found
+- Type-safe database operations
+
+### ✅ Data Access Control
+- Users can only access notifications intended for them
+- Event organizers can only modify their own events
+- Comment authors can only modify their own comments
+- RSVP operations properly scoped to authenticated user
+
+### ✅ Password Security
+- Passwords properly hashed using bcrypt
+- No password storage in plaintext
+- JWT tokens have expiration
+
+### ✅ Frontend Security
+- React's built-in XSS protection active
+- No use of dangerouslySetInnerHTML found
+- Proper token handling with automatic removal on 401
+
+## RECOMMENDATIONS BY PRIORITY
+
+### IMMEDIATE (Critical)
+1. **Fix JWT Secret Handling**: Remove fallback secret, add environment validation
+2. **Add Content Security Policy**: Implement CSP to control external script loading
+3. **Add SRI for External Scripts**: Implement Subresource Integrity for Strava embeds
+
+### SHORT TERM (High Priority)
+4. **Implement Rate Limiting**: Add rate limiting to prevent abuse
+5. **Standardize User ID Fields**: Choose either `id` or `userId` consistently
+6. **Add Input Sanitization**: Additional sanitization for user-generated content
+
+### MEDIUM TERM (Medium Priority)
+7. **Enhance Error Handling**: Implement structured, safe error responses
+8. **Add Security Headers**: Implement helmet.js for additional security headers
+9. **Add Request Logging**: Implement comprehensive request logging for security monitoring
+
+### LONG TERM (Nice to Have)
+10. **Add HTTPS Enforcement**: Ensure all production traffic uses HTTPS
+11. **Implement Session Management**: Consider moving to session-based auth for better security
+12. **Add API Versioning**: Implement proper API versioning for future security updates
+
+## OVERALL SECURITY ASSESSMENT
+
+**Grade: B+**
+
+The application demonstrates solid security fundamentals with proper authentication, authorization, and input validation. The use of Prisma ORM effectively prevents SQL injection, and the authorization patterns are well-implemented. However, the JWT secret fallback and external script loading present notable security risks that should be addressed immediately.
+
+The architecture follows security best practices in most areas, with clear separation of concerns and proper access controls. The main areas for improvement are around configuration security and external dependency management.
