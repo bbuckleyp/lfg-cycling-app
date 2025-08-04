@@ -1,6 +1,7 @@
 import axios from 'axios';
 import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth';
 import type { CreateCommentRequest, UpdateCommentRequest } from '../types/comment';
+import type { CreateEventRequest, UpdateEventRequest, EventWithDetails, EventFilters } from '../types/event';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
 
@@ -97,49 +98,54 @@ export const routesApi = {
     api.delete(`/routes/${routeId}`).then(res => res.data),
 };
 
-export const ridesApi = {
-  create: (data: any) =>
-    api.post('/rides', data).then(res => res.data),
+export const eventsApi = {
+  create: (data: CreateEventRequest) =>
+    api.post('/events', data).then(res => res.data),
 
-  getAll: (page = 1, limit = 20, search?: string) =>
-    api.get('/rides', { params: { page, limit, search } }).then(res => res.data),
+  getAll: (filters: EventFilters = {}) => {
+    const params = { ...filters };
+    return api.get('/events', { params }).then(res => res.data);
+  },
 
-  getMyRides: (type: 'organized' | 'joined' = 'organized', page = 1, limit = 20) =>
-    api.get('/rides/my-rides', { params: { type, page, limit } }).then(res => res.data),
+  getMyEvents: (filters: EventFilters = {}) =>
+    api.get('/events/user/my-events', { params: filters }).then(res => res.data),
 
-  getById: (rideId: number) =>
-    api.get(`/rides/${rideId}`).then(res => res.data),
+  getById: (eventId: number) =>
+    api.get(`/events/${eventId}`).then(res => res.data),
 
-  update: (rideId: number, data: any) =>
-    api.put(`/rides/${rideId}`, data).then(res => res.data),
+  update: (eventId: number, data: UpdateEventRequest) =>
+    api.put(`/events/${eventId}`, data).then(res => res.data),
 
-  delete: (rideId: number) =>
-    api.delete(`/rides/${rideId}`).then(res => res.data),
+  cancel: (eventId: number) =>
+    api.patch(`/events/${eventId}/cancel`).then(res => res.data),
+
+  delete: (eventId: number) =>
+    api.delete(`/events/${eventId}`).then(res => res.data),
 };
 
 export const rsvpApi = {
-  createOrUpdate: (rideId: number, data: any) =>
-    api.post(`/rides/${rideId}/rsvp`, data).then(res => res.data),
+  createOrUpdate: (eventId: number, data: any) =>
+    api.post(`/events/${eventId}/rsvp`, data).then(res => res.data),
 
-  getRideRsvps: (rideId: number, status?: string) =>
-    api.get(`/rides/${rideId}/rsvps`, { params: { status } }).then(res => res.data),
+  getEventRsvps: (eventId: number, status?: string) =>
+    api.get(`/events/${eventId}/rsvps`, { params: { status } }).then(res => res.data),
 
-  getUserRsvp: (rideId: number) =>
-    api.get(`/rides/${rideId}/rsvp`).then(res => res.data),
+  getUserRsvp: (eventId: number) =>
+    api.get(`/events/${eventId}/rsvp/me`).then(res => res.data),
 
-  delete: (rideId: number) =>
-    api.delete(`/rides/${rideId}/rsvp`).then(res => res.data),
+  delete: (eventId: number) =>
+    api.delete(`/events/${eventId}/rsvp`).then(res => res.data),
 
-  getStats: (rideId: number) =>
-    api.get(`/rides/${rideId}/rsvp-stats`).then(res => res.data),
+  getStats: (eventId: number) =>
+    api.get(`/events/${eventId}/rsvp-stats`).then(res => res.data),
 };
 
 export const commentsApi = {
-  getRideComments: (rideId: number) =>
-    api.get(`/rides/${rideId}/comments`).then(res => res.data),
+  getEventComments: (eventId: number) =>
+    api.get(`/events/${eventId}/comments`).then(res => res.data),
 
-  create: (rideId: number, data: CreateCommentRequest) =>
-    api.post(`/rides/${rideId}/comments`, data).then(res => res.data),
+  create: (eventId: number, data: CreateCommentRequest) =>
+    api.post(`/events/${eventId}/comments`, data).then(res => res.data),
 
   update: (commentId: number, data: UpdateCommentRequest) =>
     api.put(`/comments/${commentId}`, data).then(res => res.data),

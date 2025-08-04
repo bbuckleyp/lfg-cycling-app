@@ -4,7 +4,7 @@ import { rsvpApi } from '../services/api';
 import type { CreateRsvpRequest } from '../types/rsvp';
 
 interface RsvpButtonProps {
-  rideId: number;
+  eventId: number;
   currentStatus?: 'going' | 'maybe' | 'not_going';
   isOrganizer?: boolean;
   onRsvpChange?: (status: 'going' | 'maybe' | 'not_going' | null) => void;
@@ -12,7 +12,7 @@ interface RsvpButtonProps {
 }
 
 const RsvpButton: React.FC<RsvpButtonProps> = ({
-  rideId,
+  eventId,
   currentStatus,
   isOrganizer = false,
   onRsvpChange,
@@ -31,7 +31,7 @@ const RsvpButton: React.FC<RsvpButtonProps> = ({
       setError('');
       
       const data: CreateRsvpRequest = { status };
-      await rsvpApi.createOrUpdate(rideId, data);
+      await rsvpApi.createOrUpdate(eventId, data);
       
       onRsvpChange?.(status);
       setShowOptions(false);
@@ -49,7 +49,7 @@ const RsvpButton: React.FC<RsvpButtonProps> = ({
       setLoading(true);
       setError('');
       
-      await rsvpApi.delete(rideId);
+      await rsvpApi.delete(eventId);
       
       onRsvpChange?.(null);
       setShowOptions(false);

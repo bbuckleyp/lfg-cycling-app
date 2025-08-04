@@ -5,11 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import type { CommentWithUser } from '../types/comment';
 
 interface CommentListProps {
-  rideId: number;
-  onCommentAdded: () => void;
+  eventId: number;
+  refreshTrigger?: number;
 }
 
-const CommentList: React.FC<CommentListProps> = ({ rideId, onCommentAdded }) => {
+const CommentList: React.FC<CommentListProps> = ({ eventId, refreshTrigger }) => {
   const { user } = useAuth();
   const [comments, setComments] = useState<CommentWithUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +21,7 @@ const CommentList: React.FC<CommentListProps> = ({ rideId, onCommentAdded }) => 
   const fetchComments = async () => {
     try {
       setIsLoading(true);
-      const response = await commentsApi.getRideComments(rideId);
+      const response = await commentsApi.getEventComments(eventId);
       setComments(response.comments);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load comments');
@@ -32,7 +32,7 @@ const CommentList: React.FC<CommentListProps> = ({ rideId, onCommentAdded }) => 
 
   useEffect(() => {
     fetchComments();
-  }, [rideId, onCommentAdded]);
+  }, [eventId, refreshTrigger]);
 
   const handleEdit = (comment: CommentWithUser) => {
     setEditingComment(comment.id);

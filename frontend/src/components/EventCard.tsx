@@ -1,18 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import type { RideWithDetails } from '../types/ride';
+import type { EventWithDetails } from '../types/event';
 import { useAuth } from '../context/AuthContext';
 import StravaRoutePreview from './StravaRoutePreview';
 
-interface RideCardProps {
-  ride: RideWithDetails;
+interface EventCardProps {
+  event: EventWithDetails;
   viewMode?: 'grid' | 'list';
+  linkPath?: string;
+  eventType?: 'ride' | 'race';
 }
 
-const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPath, eventType }) => {
   const { user } = useAuth();
-  const isOrganizer = user?.id === ride.organizerId;
+  const isOrganizer = user?.id === event.organizer.id;
+  const eventPath = linkPath || `/events/${event.id}`;
   
   
   
@@ -79,64 +82,64 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0">
               <Link
-                to={`/rides/${ride.id}`}
+                to={eventPath}
                 className="text-lg font-semibold text-gray-900 hover:text-primary-600 transition-colors truncate block"
               >
-                {ride.title}
+                {event.title}
               </Link>
               <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
                 <div className="flex items-center">
                   <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  {formatDate(ride.startDate)} at {formatTime(ride.startTime)}
+                  {formatDate(event.startDate)} at {formatTime(event.startTime)}
                 </div>
                 <div className="flex items-center">
                   <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  {ride.startLocation}
+                  {event.startLocation}
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-2 ml-4">
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${getPaceBadgeColor(ride.pace)}`}>
-                {ride.pace}
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${getPaceBadgeColor(event.pace)}`}>
+                {event.pace}
               </span>
-              {ride.userRsvpStatus && (
-                <div className={`text-sm font-medium ${getRsvpStatusColor(ride.userRsvpStatus)}`}>
-                  {ride.userRsvpStatus === 'going' && '✓ Going'}
-                  {ride.userRsvpStatus === 'maybe' && '? Maybe'}
-                  {ride.userRsvpStatus === 'not_going' && '✗ Not Going'}
+              {event.userRsvpStatus && (
+                <div className={`text-sm font-medium ${getRsvpStatusColor(event.userRsvpStatus)}`}>
+                  {event.userRsvpStatus === 'going' && '✓ Going'}
+                  {event.userRsvpStatus === 'maybe' && '? Maybe'}
+                  {event.userRsvpStatus === 'not_going' && '✗ Not Going'}
                 </div>
               )}
             </div>
           </div>
           
           {/* Route info and map */}
-          {(ride.route || (ride.distanceMeters && ride.distanceMeters > 0)) && (
-            <div className={ride.route?.stravaRouteId ? "mb-3" : "mb-3"}>
+          {(event.route || (event.distanceMeters && event.distanceMeters > 0)) && (
+            <div className={event.route?.stravaRouteId ? "mb-3" : "mb-3"}>
               {/* Only show route details for non-Strava routes */}
-              {!ride.route?.stravaRouteId && (
+              {!event.route?.stravaRouteId && (
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">
-                      {ride.route ? ride.route.name : 'Route Details'}
+                      {event.route ? event.route.name : 'Route Details'}
                     </h4>
                     <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                      {ride.route ? (
+                      {event.route ? (
                         <>
-                          <span>{formatDistance(ride.route.distanceMeters)}</span>
-                          <span>{formatElevation(ride.route.elevationGainMeters)} elevation</span>
+                          <span>{formatDistance(event.route.distanceMeters)}</span>
+                          <span>{formatElevation(event.route.elevationGainMeters)} elevation</span>
                         </>
                       ) : (
                         <>
-                          {ride.distanceMeters && ride.distanceMeters > 0 && (
-                            <span>{formatDistance(ride.distanceMeters)}</span>
+                          {event.distanceMeters && event.distanceMeters > 0 && (
+                            <span>{formatDistance(event.distanceMeters)}</span>
                           )}
-                          {ride.elevationGainMeters && ride.elevationGainMeters > 0 && (
-                            <span>{formatElevation(ride.elevationGainMeters)} elevation</span>
+                          {event.elevationGainMeters && event.elevationGainMeters > 0 && (
+                            <span>{formatElevation(event.elevationGainMeters)} elevation</span>
                           )}
                         </>
                       )}
@@ -149,13 +152,13 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
               )}
               
               {/* Route Map Preview - full width in list view */}
-              {ride.route?.stravaRouteId ? (
+              {event.route?.stravaRouteId ? (
                 <StravaRoutePreview
-                  stravaRouteId={ride.route.stravaRouteId}
-                  routeName={ride.route.name}
+                  stravaRouteId={event.route.stravaRouteId}
+                  routeName={event.route.name}
                   className="min-h-[150px] w-full"
                 />
-              ) : ride.route ? (
+              ) : event.route ? (
                 <div className="min-h-[150px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
                   No route preview available
                 </div>
@@ -166,21 +169,21 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="flex items-center">
-                {ride.organizer.profilePhotoUrl ? (
+                {event.organizer.profilePhotoUrl ? (
                   <img
                     className="h-6 w-6 rounded-full"
-                    src={ride.organizer.profilePhotoUrl}
-                    alt={`${ride.organizer.firstName} ${ride.organizer.lastName}`}
+                    src={event.organizer.profilePhotoUrl}
+                    alt={`${event.organizer.firstName} ${event.organizer.lastName}`}
                   />
                 ) : (
                   <div className="h-6 w-6 rounded-full bg-primary-100 flex items-center justify-center">
                     <span className="text-xs font-medium text-primary-600">
-                      {ride.organizer.firstName[0]}{ride.organizer.lastName[0]}
+                      {event.organizer.firstName[0]}{event.organizer.lastName[0]}
                     </span>
                   </div>
                 )}
                 <span className="ml-2 text-sm text-gray-700">
-                  {ride.organizer.firstName} {ride.organizer.lastName}
+                  {event.organizer.firstName} {event.organizer.lastName}
                 </span>
               </div>
               
@@ -189,13 +192,13 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
                   <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-7.5l-3 3m0 0l-3-3m3 3V9a6 6 0 00-6-6" />
                   </svg>
-                  {ride.rsvpCount}
+                  {event.rsvpCount}
                 </div>
                 <div className="flex items-center">
                   <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
-                  {ride.commentCount || 0}
+                  {event.commentCount || 0}
                 </div>
               </div>
             </div>
@@ -203,7 +206,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
             <div className="flex items-center space-x-2">
               {isOrganizer && (
                 <Link
-                  to={`/rides/${ride.id}/edit`}
+                  to={`/events/${event.id}/edit`}
                   className="inline-flex items-center justify-center px-2 py-1 border border-gray-300 text-xs leading-4 font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
                 >
                   <svg className="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,7 +216,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
                 </Link>
               )}
               <Link
-                to={`/rides/${ride.id}`}
+                to={eventPath}
                 className="inline-flex items-center justify-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
               >
                 View Details
@@ -232,25 +235,25 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
           <div className="flex-1 mb-3 sm:mb-0">
             <Link
-              to={`/rides/${ride.id}`}
+              to={eventPath}
               className="text-lg sm:text-xl font-semibold text-gray-900 hover:text-primary-600 transition-colors"
             >
-              {ride.title}
+              {event.title}
             </Link>
-            {ride.description && (
-              <p className="text-gray-600 mt-1 line-clamp-2">{ride.description}</p>
+            {event.description && (
+              <p className="text-gray-600 mt-1 line-clamp-2">{event.description}</p>
             )}
           </div>
           
           <div className="flex items-center space-x-2 sm:ml-4">
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getPaceBadgeColor(ride.pace)}`}>
-              {ride.pace}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getPaceBadgeColor(event.pace)}`}>
+              {event.pace}
             </span>
-            {ride.userRsvpStatus && (
-              <div className={`text-sm font-medium ${getRsvpStatusColor(ride.userRsvpStatus)}`}>
-                {ride.userRsvpStatus === 'going' && '✓ Going'}
-                {ride.userRsvpStatus === 'maybe' && '? Maybe'}
-                {ride.userRsvpStatus === 'not_going' && '✗ Not Going'}
+            {event.userRsvpStatus && (
+              <div className={`text-sm font-medium ${getRsvpStatusColor(event.userRsvpStatus)}`}>
+                {event.userRsvpStatus === 'going' && '✓ Going'}
+                {event.userRsvpStatus === 'maybe' && '? Maybe'}
+                {event.userRsvpStatus === 'not_going' && '✗ Not Going'}
               </div>
             )}
           </div>
@@ -261,7 +264,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
             <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            {formatDate(ride.startDate)} at {formatTime(ride.startTime)}
+            {formatDate(event.startDate)} at {formatTime(event.startTime)}
           </div>
           
           <div className="flex items-center text-sm text-gray-600">
@@ -269,32 +272,32 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            {ride.startLocation}
+            {event.startLocation}
           </div>
         </div>
 
-        {(ride.route || (ride.distanceMeters && ride.distanceMeters > 0) || (ride.elevationGainMeters && ride.elevationGainMeters > 0)) && (
-          <div className={ride.route?.stravaRouteId ? "mb-4" : "bg-gray-50 rounded-lg p-3 mb-4"}>
+        {(event.route || (event.distanceMeters && event.distanceMeters > 0) || (event.elevationGainMeters && event.elevationGainMeters > 0)) && (
+          <div className={event.route?.stravaRouteId ? "mb-4" : "bg-gray-50 rounded-lg p-3 mb-4"}>
             {/* Only show route details for non-Strava routes */}
-            {!ride.route?.stravaRouteId && (
+            {!event.route?.stravaRouteId && (
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h4 className="font-medium text-gray-900">
-                    {ride.route ? ride.route.name : 'Route Details'}
+                    {event.route ? event.route.name : 'Route Details'}
                   </h4>
                   <div className="flex items-center space-x-4 text-sm text-gray-600 mt-1">
-                    {ride.route ? (
+                    {event.route ? (
                       <>
-                        <span>{formatDistance(ride.route.distanceMeters)}</span>
-                        <span>{formatElevation(ride.route.elevationGainMeters)} elevation</span>
+                        <span>{formatDistance(event.route.distanceMeters)}</span>
+                        <span>{formatElevation(event.route.elevationGainMeters)} elevation</span>
                       </>
                     ) : (
                       <>
-                        {ride.distanceMeters && ride.distanceMeters > 0 && (
-                          <span>{formatDistance(ride.distanceMeters)}</span>
+                        {event.distanceMeters && event.distanceMeters > 0 && (
+                          <span>{formatDistance(event.distanceMeters)}</span>
                         )}
-                        {ride.elevationGainMeters && ride.elevationGainMeters > 0 && (
-                          <span>{formatElevation(ride.elevationGainMeters)} elevation</span>
+                        {event.elevationGainMeters && event.elevationGainMeters > 0 && (
+                          <span>{formatElevation(event.elevationGainMeters)} elevation</span>
                         )}
                       </>
                     )}
@@ -307,13 +310,13 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
             )}
             
             {/* Route Map Preview - only show for Strava routes */}
-            {ride.route?.stravaRouteId ? (
+            {event.route?.stravaRouteId ? (
               <StravaRoutePreview
-                stravaRouteId={ride.route.stravaRouteId}
-                routeName={ride.route.name}
+                stravaRouteId={event.route.stravaRouteId}
+                routeName={event.route.name}
                 className="min-h-[200px] w-full"
               />
-            ) : ride.route ? (
+            ) : event.route ? (
               <div className="min-h-[200px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
                 No route preview available
               </div>
@@ -324,22 +327,22 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
-              {ride.organizer.profilePhotoUrl ? (
+              {event.organizer.profilePhotoUrl ? (
                 <img
                   className="h-8 w-8 rounded-full"
-                  src={ride.organizer.profilePhotoUrl}
-                  alt={`${ride.organizer.firstName} ${ride.organizer.lastName}`}
+                  src={event.organizer.profilePhotoUrl}
+                  alt={`${event.organizer.firstName} ${event.organizer.lastName}`}
                 />
               ) : (
                 <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                   <span className="text-sm font-medium text-primary-600">
-                    {ride.organizer.firstName[0]}{ride.organizer.lastName[0]}
+                    {event.organizer.firstName[0]}{event.organizer.lastName[0]}
                   </span>
                 </div>
               )}
               <div className="ml-3">
                 <p className="text-sm font-medium text-gray-900">
-                  {ride.organizer.firstName} {ride.organizer.lastName}
+                  {event.organizer.firstName} {event.organizer.lastName}
                 </p>
                 <p className="text-xs text-gray-500">Organizer</p>
               </div>
@@ -350,13 +353,13 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
                 <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-7.5l-3 3m0 0l-3-3m3 3V9a6 6 0 00-6-6" />
                 </svg>
-                                {ride.rsvpCount}
+                                {event.rsvpCount}
               </div>
               <div className="flex items-center">
                 <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                                {ride.commentCount || 0}
+                                {event.commentCount || 0}
               </div>
             </div>
           </div>
@@ -364,7 +367,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
           <div className="flex items-center justify-end space-x-2">
             {isOrganizer && (
               <Link
-                to={`/rides/${ride.id}/edit`}
+                to={`/events/${event.id}/edit`}
                 className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
               >
                 <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,7 +377,7 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
               </Link>
             )}
             <Link
-              to={`/rides/${ride.id}`}
+              to={eventPath}
               className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
             >
               View Details
@@ -386,4 +389,4 @@ const RideCard: React.FC<RideCardProps> = ({ ride, viewMode = 'grid' }) => {
   );
 };
 
-export default RideCard;
+export default EventCard;

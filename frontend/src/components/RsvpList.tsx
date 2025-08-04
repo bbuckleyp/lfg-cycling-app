@@ -3,11 +3,11 @@ import { rsvpApi } from '../services/api';
 import type { RsvpWithUser, RsvpStats } from '../types/rsvp';
 
 interface RsvpListProps {
-  rideId: number;
+  eventId: number;
   refreshTrigger?: number;
 }
 
-const RsvpList: React.FC<RsvpListProps> = ({ rideId, refreshTrigger }) => {
+const RsvpList: React.FC<RsvpListProps> = ({ eventId, refreshTrigger }) => {
   const [rsvps, setRsvps] = useState<RsvpWithUser[]>([]);
   const [stats, setStats] = useState<RsvpStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ const RsvpList: React.FC<RsvpListProps> = ({ rideId, refreshTrigger }) => {
   useEffect(() => {
     fetchRsvps();
     fetchStats();
-  }, [rideId, refreshTrigger]);
+  }, [eventId, refreshTrigger]);
 
   useEffect(() => {
     fetchRsvps();
@@ -25,7 +25,7 @@ const RsvpList: React.FC<RsvpListProps> = ({ rideId, refreshTrigger }) => {
   const fetchRsvps = async () => {
     try {
       setLoading(true);
-      const response = await rsvpApi.getRideRsvps(rideId, selectedStatus);
+      const response = await rsvpApi.getEventRsvps(eventId, selectedStatus);
       setRsvps(response.rsvps);
     } catch (error) {
       console.error('Error fetching RSVPs:', error);
@@ -36,7 +36,7 @@ const RsvpList: React.FC<RsvpListProps> = ({ rideId, refreshTrigger }) => {
 
   const fetchStats = async () => {
     try {
-      const response = await rsvpApi.getStats(rideId);
+      const response = await rsvpApi.getStats(eventId);
       setStats(response.stats);
     } catch (error) {
       console.error('Error fetching RSVP stats:', error);

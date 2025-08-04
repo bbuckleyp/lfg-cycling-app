@@ -26,10 +26,10 @@ const Navbar: React.FC = () => {
             
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
-                to="/rides"
+                to="/events"
                 className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
               >
-                Browse Rides
+                Browse Events
               </Link>
               {user && (
                 <>
@@ -40,10 +40,10 @@ const Navbar: React.FC = () => {
                     Dashboard
                   </Link>
                   <Link
-                    to="/create-ride"
+                    to="/create-event"
                     className="text-gray-500 hover:text-gray-700 inline-flex items-center px-1 pt-1 text-sm font-medium"
                   >
-                    Create Ride
+                    Create Event
                   </Link>
                 </>
               )}
@@ -141,11 +141,11 @@ const Navbar: React.FC = () => {
           <div className="sm:hidden">
             <div className="pt-2 pb-3 space-y-1">
               <Link
-                to="/rides"
+                to="/events"
                 className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Browse Rides
+                Browse Events
               </Link>
               {user && (
                 <>
@@ -157,11 +157,11 @@ const Navbar: React.FC = () => {
                     Dashboard
                   </Link>
                   <Link
-                    to="/create-ride"
+                    to="/create-event"
                     className="block pl-3 pr-4 py-2 text-base font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Create Ride
+                    Create Event
                   </Link>
                 </>
               )}

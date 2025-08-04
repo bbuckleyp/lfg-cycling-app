@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { ridesApi } from '../services/api';
-import type { RideWithDetails } from '../types/ride';
+import { eventsApi } from '../services/api';
+import type { EventWithDetails } from '../types/event';
 import StravaRouteSelector from '../components/StravaRouteSelector';
 
 const editRideSchema = z.object({
@@ -32,8 +32,8 @@ type EditRideFormData = z.infer<typeof editRideSchema>;
 
 const EditRide: React.FC = () => {
   const navigate = useNavigate();
-  const { rideId } = useParams<{ rideId: string }>();
-  const [ride, setRide] = useState<RideWithDetails | null>(null);
+  const { eventId } = useParams<{ eventId: string }>();
+  const [event, setEvent] = useState<EventWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string>('');
@@ -55,46 +55,46 @@ const EditRide: React.FC = () => {
 
 
   useEffect(() => {
-    const fetchRide = async () => {
-      if (!rideId) return;
+    const fetchEvent = async () => {
+      if (!eventId) return;
       
       try {
         setIsLoading(true);
-        const rideData = await ridesApi.getById(parseInt(rideId));
-        setRide(rideData.ride);
+        const eventData = await eventsApi.getById(parseInt(eventId));
+        setEvent(eventData.event);
         
         // Set local Strava route state
-        const initialStravaRoute = rideData.ride.route ? {
-          stravaId: rideData.ride.route.stravaRouteId,
-          name: rideData.ride.route.name,
-          distance: rideData.ride.route.distanceMeters,
-          elevationGain: rideData.ride.route.elevationGainMeters || 0,
-          estimatedTime: rideData.ride.route.estimatedMovingTime || 0,
+        const initialStravaRoute = eventData.event.route ? {
+          stravaId: eventData.event.route.stravaRouteId,
+          name: eventData.event.route.name,
+          distance: eventData.event.route.distanceMeters,
+          elevationGain: eventData.event.route.elevationGainMeters || 0,
+          estimatedTime: eventData.event.route.estimatedMovingTime || 0,
         } : undefined;
         setLocalStravaRoute(initialStravaRoute);
 
-        // Reset form with ride data (excluding stravaRoute)
+        // Reset form with event data (excluding stravaRoute)
         reset({
-          title: rideData.ride.title,
-          description: rideData.ride.description || '',
-          startDate: rideData.ride.startDate,
-          startTime: rideData.ride.startTime,
-          startLocation: rideData.ride.startLocation,
-          pace: rideData.ride.pace,
-          isPublic: rideData.ride.isPublic,
+          title: eventData.event.title,
+          description: eventData.event.description || '',
+          startDate: eventData.event.startDate,
+          startTime: eventData.event.startTime,
+          startLocation: eventData.event.startLocation,
+          pace: eventData.event.pace,
+          isPublic: eventData.event.isPublic,
         });
       } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load ride');
+        setError(err.response?.data?.error || 'Failed to load event');
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchRide();
-  }, [rideId, reset]);
+    fetchEvent();
+  }, [eventId, reset]);
 
   const onSubmit = async (data: EditRideFormData) => {
-    if (!rideId) return;
+    if (!eventId) return;
 
     try {
       setIsLoading(true);
@@ -119,31 +119,31 @@ const EditRide: React.FC = () => {
         elevationGainMeters: (localStravaRoute?.isNoRoute && localStravaRoute.elevationGain > 0) ? Math.round(localStravaRoute.elevationGain) : undefined,
       };
 
-      await ridesApi.update(parseInt(rideId), updateData);
-      navigate(`/rides/${rideId}`);
+      await eventsApi.update(parseInt(eventId), updateData);
+      navigate(`/events/${eventId}`);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update ride');
+      setError(err.response?.data?.error || 'Failed to update event');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!rideId) return;
+    if (!eventId) return;
 
     try {
       setIsDeleting(true);
-      await ridesApi.delete(parseInt(rideId));
+      await eventsApi.delete(parseInt(eventId));
       navigate('/dashboard?tab=organized');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete ride');
+      setError(err.response?.data?.error || 'Failed to delete event');
     } finally {
       setIsDeleting(false);
       setShowDeleteConfirm(false);
     }
   };
 
-  if (isLoading && !ride) {
+  if (isLoading && !event) {
     return (
       <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center h-64">
@@ -153,7 +153,7 @@ const EditRide: React.FC = () => {
     );
   }
 
-  if (!ride) {
+  if (!event) {
     return (
       <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         <div className="text-center">
@@ -319,7 +319,7 @@ const EditRide: React.FC = () => {
           <div className="flex items-center space-x-3">
             <button
               type="button"
-              onClick={() => navigate(`/rides/${rideId}`)}
+              onClick={() => navigate(`/events/${eventId}`)}
               className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancel

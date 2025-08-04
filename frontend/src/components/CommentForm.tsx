@@ -12,11 +12,11 @@ const commentSchema = z.object({
 type CommentFormData = z.infer<typeof commentSchema>;
 
 interface CommentFormProps {
-  rideId: number;
+  eventId: number;
   onCommentAdded: () => void;
 }
 
-const CommentForm: React.FC<CommentFormProps> = ({ rideId, onCommentAdded }) => {
+const CommentForm: React.FC<CommentFormProps> = ({ eventId, onCommentAdded }) => {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>('');
@@ -42,7 +42,7 @@ const CommentForm: React.FC<CommentFormProps> = ({ rideId, onCommentAdded }) => 
     try {
       setIsSubmitting(true);
       setError('');
-      await commentsApi.create(rideId, { content: data.content.trim() });
+      await commentsApi.create(eventId, { content: data.content.trim() });
       reset();
       onCommentAdded();
     } catch (err: any) {
@@ -86,7 +86,7 @@ const CommentForm: React.FC<CommentFormProps> = ({ rideId, onCommentAdded }) => 
           <div className="space-y-3">
             <textarea
               {...register('content')}
-              placeholder="Share your thoughts about this ride..."
+              placeholder="Share your thoughts about this event..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
               rows={3}
               maxLength={1000}
