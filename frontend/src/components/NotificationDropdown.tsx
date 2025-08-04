@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, parseISO } from 'date-fns';
+import DOMPurify from 'dompurify';
 import { notificationApi, type Notification } from '../services/notificationApi';
 
 const NotificationDropdown: React.FC = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -178,7 +180,7 @@ const NotificationDropdown: React.FC = () => {
                   <p className="text-sm">No notifications yet</p>
                 </div>
               ) : (
-                notifications.map((notification) => (
+                notifications.filter(notification => notification && notification.id).map((notification) => (
                   <div
                     key={notification.id}
                     className={`flex items-start p-4 hover:bg-gray-50 cursor-pointer ${
@@ -196,21 +198,35 @@ const NotificationDropdown: React.FC = () => {
                     </div>
                     <div className="ml-3 flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
-                        {notification.title}
+                        {DOMPurify.sanitize(notification.title, { ALLOWED_TAGS: [] })}
                       </p>
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                        {notification.message}
+                        {DOMPurify.sanitize(notification.message, { ALLOWED_TAGS: [] })}
                       </p>
                       <div className="flex items-center justify-between mt-2">
-                        <Link
-                          to={`/rides/${notification.ride.id}`}
-                          className="text-xs text-primary-600 hover:text-primary-500"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          View ride
-                        </Link>
+                        {notification.event && Number.isInteger(notification.event.id) && notification.event.id > 0 ? (
+                          <Link
+                            to={`/events/${encodeURIComponent(notification.event.id)}`}
+                            className="text-xs text-primary-600 hover:text-primary-500"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            View event
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-gray-400">Event no longer available</span>
+                        )}
                         <span className="text-xs text-gray-400">
-                          {formatDistanceToNow(parseISO(notification.createdAt), { addSuffix: true })}
+                          {(() => {
+                            try {
+                              const date = parseISO(notification.createdAt);
+                              if (isNaN(date.getTime())) {
+                                return 'Recently';
+                              }
+                              return formatDistanceToNow(date, { addSuffix: true });
+                            } catch (error) {
+                              return 'Recently';
+                            }
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -230,7 +246,7 @@ const NotificationDropdown: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsOpen(false);
-                    // In a real app, you might navigate to a full notifications page
+                    navigate('/notifications');
                   }}
                   className="text-sm text-primary-600 hover:text-primary-500 w-full text-center"
                 >

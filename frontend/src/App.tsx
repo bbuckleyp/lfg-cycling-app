@@ -10,6 +10,7 @@ import CreateEvent from './pages/CreateEvent';
 import EventDetail from './pages/EventDetail';
 import EditRide from './pages/EditRide';
 import Dashboard from './pages/Dashboard';
+import Notifications from './pages/Notifications';
 import StravaCallback from './pages/StravaCallback';
 import StravaAuthCallback from './pages/StravaAuthCallback';
 
@@ -82,6 +83,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
                   </ProtectedRoute>
                 }
               />

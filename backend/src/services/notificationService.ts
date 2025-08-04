@@ -17,10 +17,10 @@ export interface NotificationWithEvent {
   type: string;
   title: string;
   message: string;
-  is_read: boolean;
-  created_at: Date;
-  send_at: Date | null;
-  sent_at: Date | null;
+  isRead: boolean;
+  createdAt: string;
+  sendAt: string | null;
+  sentAt: string | null;
   event: {
     id: number;
     title: string;
@@ -77,10 +77,10 @@ class NotificationService {
       type: notification.type,
       title: notification.title,
       message: notification.message,
-      is_read: notification.is_read,
-      created_at: notification.created_at,
-      send_at: notification.send_at,
-      sent_at: notification.sent_at,
+      isRead: notification.is_read,
+      createdAt: notification.created_at.toISOString(),
+      sendAt: notification.send_at?.toISOString() || null,
+      sentAt: notification.sent_at?.toISOString() || null,
       event: notification.events ? {
         id: notification.events.id,
         title: notification.events.title,

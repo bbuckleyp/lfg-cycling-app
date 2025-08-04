@@ -24,7 +24,7 @@ export interface Notification {
   createdAt: string;
   sendAt: string | null;
   sentAt: string | null;
-  ride: {
+  event: {
     id: number;
     title: string;
     startDate: string;
@@ -34,7 +34,7 @@ export interface Notification {
       firstName: string;
       lastName: string;
     };
-  };
+  } | null;
 }
 
 export const notificationApi = {

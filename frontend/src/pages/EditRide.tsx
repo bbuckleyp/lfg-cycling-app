@@ -25,7 +25,6 @@ const editRideSchema = z.object({
     estimatedTime: z.number(),
     isNoRoute: z.boolean().optional(),
   }).optional(),
-  isPublic: z.boolean().optional(),
 });
 
 type EditRideFormData = z.infer<typeof editRideSchema>;
@@ -81,7 +80,6 @@ const EditRide: React.FC = () => {
           startTime: eventData.event.startTime,
           startLocation: eventData.event.startLocation,
           pace: eventData.event.pace,
-          isPublic: eventData.event.isPublic,
         });
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load event');
@@ -107,7 +105,6 @@ const EditRide: React.FC = () => {
         startTime: data.startTime,
         startLocation: data.startLocation,
         pace: data.pace,
-        isPublic: data.isPublic,
         stravaRouteData: (localStravaRoute && !localStravaRoute.isNoRoute) ? {
           stravaRouteId: localStravaRoute.stravaId,
           name: localStravaRoute.name,
@@ -293,16 +290,6 @@ const EditRide: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center">
-          <input
-            {...register('isPublic')}
-            type="checkbox"
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-          />
-          <label htmlFor="isPublic" className="ml-2 block text-sm text-gray-700">
-            Make this ride public (visible to all users)
-          </label>
-        </div>
 
         <div className="flex items-center justify-between pt-6 border-t border-gray-200">
           <button
