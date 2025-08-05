@@ -4,6 +4,8 @@ import { format, parseISO } from 'date-fns';
 import type { EventWithDetails } from '../types/event';
 import { useAuth } from '../context/AuthContext';
 import StravaRoutePreview from './StravaRoutePreview';
+import RideWithGPSEmbed from './RideWithGPSEmbed';
+import ManualRoutePlaceholder from './ManualRoutePlaceholder';
 
 interface EventCardProps {
   event: EventWithDetails;
@@ -12,7 +14,7 @@ interface EventCardProps {
   eventType?: 'ride' | 'race';
 }
 
-const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPath, eventType }) => {
+const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPath }) => {
   const { user } = useAuth();
   const isOrganizer = user?.id === event.organizer.id;
   const eventPath = linkPath || `/events/${event.id}`;
@@ -88,7 +90,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
                 {event.title}
               </Link>
               <div className="flex items-center space-x-4 mt-1 text-sm text-gray-600">
-                <div className="flex items-center">
+                <div className="flex items-center whitespace-nowrap">
                   <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -120,8 +122,8 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
           {/* Route info and map */}
           {(event.route || (event.distanceMeters && event.distanceMeters > 0)) && (
             <div className={event.route?.stravaRouteId ? "mb-3" : "mb-3"}>
-              {/* Only show route details for non-Strava routes */}
-              {!event.route?.stravaRouteId && (
+              {/* Only show route details for non-embedded routes (manual routes) */}
+              {false && (
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <h4 className="text-sm font-medium text-gray-900">
@@ -156,12 +158,24 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
                 <StravaRoutePreview
                   stravaRouteId={event.route.stravaRouteId}
                   routeName={event.route.name}
-                  className="min-h-[150px] w-full"
+                  className="h-[450px] w-full"
+                />
+              ) : event.route?.ridewithgpsRouteId ? (
+                <RideWithGPSEmbed
+                  routeId={event.route.ridewithgpsRouteId}
+                  routeName={event.route.name}
+                  className="h-[450px] w-full"
                 />
               ) : event.route ? (
-                <div className="min-h-[150px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
+                <div className="h-[450px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
                   No route preview available
                 </div>
+              ) : (event.distanceMeters && event.distanceMeters > 0) ? (
+                <ManualRoutePlaceholder
+                  distanceMeters={event.distanceMeters}
+                  elevationGainMeters={event.elevationGainMeters}
+                  className="h-[450px] w-full"
+                />
               ) : null}
             </div>
           )}
@@ -230,7 +244,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
 
   // Grid view - original detailed layout
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
+    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col min-h-[700px]">
       <div className="p-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-3">
           <div className="flex-1 mb-3 sm:mb-0">
@@ -260,7 +274,7 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <div className="flex items-center text-sm text-gray-600">
+          <div className="flex items-center text-sm text-gray-600 whitespace-nowrap">
             <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -276,10 +290,12 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
           </div>
         </div>
 
-        {(event.route || (event.distanceMeters && event.distanceMeters > 0) || (event.elevationGainMeters && event.elevationGainMeters > 0)) && (
-          <div className={event.route?.stravaRouteId ? "mb-4" : "bg-gray-50 rounded-lg p-3 mb-4"}>
-            {/* Only show route details for non-Strava routes */}
-            {!event.route?.stravaRouteId && (
+        {/* Route section - always present for consistent height */}
+        <div className="mb-4 flex-1">
+          {(event.route || (event.distanceMeters && event.distanceMeters > 0) || (event.elevationGainMeters && event.elevationGainMeters > 0)) ? (
+            <div>
+            {/* Only show route details for non-embedded routes (manual routes) */}
+            {false && (
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h4 className="font-medium text-gray-900">
@@ -304,27 +320,74 @@ const EventCard: React.FC<EventCardProps> = ({ event, viewMode = 'grid', linkPat
                   </div>
                 </div>
                 <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 713 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               </div>
             )}
             
-            {/* Route Map Preview - only show for Strava routes */}
+            {/* Route Map Preview - show for Strava and RideWithGPS routes */}
             {event.route?.stravaRouteId ? (
               <StravaRoutePreview
                 stravaRouteId={event.route.stravaRouteId}
                 routeName={event.route.name}
-                className="min-h-[200px] w-full"
+                className="h-[500px] w-full"
+              />
+            ) : event.route?.ridewithgpsRouteId ? (
+              <RideWithGPSEmbed
+                routeId={event.route.ridewithgpsRouteId}
+                routeName={event.route.name}
+                className="h-[500px] w-full"
               />
             ) : event.route ? (
-              <div className="min-h-[200px] w-full flex items-center justify-center bg-gray-100 rounded border text-gray-500 text-sm">
-                No route preview available
+              <div className="h-[500px] w-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-8">
+                <div className="text-center max-w-md">
+                  <svg className="mx-auto h-20 w-20 text-blue-500 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">{event.route.name}</h3>
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-blue-600 mb-1">
+                        {formatDistance(event.route.distanceMeters)}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">Distance</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-green-600 mb-1">
+                        {formatElevation(event.route.elevationGainMeters)}
+                      </div>
+                      <div className="text-sm text-gray-600 font-medium">Elevation</div>
+                    </div>
+                  </div>
+                  {event.route.description && (
+                    <p className="text-gray-700 text-sm leading-relaxed">{event.route.description}</p>
+                  )}
+                </div>
               </div>
+            ) : (event.distanceMeters && event.distanceMeters > 0) ? (
+              <ManualRoutePlaceholder
+                distanceMeters={event.distanceMeters}
+                elevationGainMeters={event.elevationGainMeters}
+                className="h-[500px] w-full"
+              />
             ) : null}
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="h-[500px] w-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+              <div className="text-center">
+                <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-600 mb-2">No Route Information</h3>
+                <p className="text-sm text-gray-500 max-w-xs">
+                  This event doesn't have a specific route. Check with the organizer for details about the meeting point and route.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 mt-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
               {event.organizer.profilePhotoUrl ? (
