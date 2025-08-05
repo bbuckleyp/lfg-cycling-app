@@ -977,3 +977,116 @@ The updated EventCard now follows this rendering priority for route information:
 - ✅ No breaking changes to existing functionality
 
 The implementation successfully addresses the original issue by providing consistent, attractive placeholders for events with manually entered route information, ensuring visual parity with events that have imported routes from external services.
+
+---
+
+# Task: Add "No Route Information" Placeholder to List View
+
+## Problem Analysis
+Looking at the screenshot and codebase, I can see that:
+- The list view currently shows events without route information as blank areas 
+- The grid view already has a "No Route Information" placeholder at lines 414-425 in EventCard.tsx
+- The list view has similar logic but displays differently at lines 194-205
+
+## Plan
+- [ ] Update the list view section in EventCard.tsx to show a consistent "No Route Information" placeholder
+- [ ] Make the placeholder match the grid view styling but adapt it for the horizontal list layout
+- [ ] Ensure the placeholder appears when events have no route data (no route object, no distanceMeters, no elevationGainMeters)
+- [ ] Test the changes to ensure the placeholder appears correctly in list view
+
+## Tasks
+- [x] Modify the list view "No Route Information" placeholder in EventCard.tsx (lines 194-205)
+- [x] Update the styling to be more compact and appropriate for list view
+- [x] Verify the placeholder appears consistently for events without route information
+
+## Review
+
+### Summary of Changes Made
+
+**Problem Solved**: Events in list view that don't have any route information were not showing a "No Route Information" placeholder at all, creating inconsistent visual appearance compared to grid view which always shows a placeholder section.
+
+**Solution Implemented**: Updated the list view to always show a route section with a "No Route Information" placeholder when events have no route data, matching the behavior of grid view.
+
+### Key Technical Changes
+
+1. **Fixed Conditional Logic Structure**
+   - **Before**: Route section was only rendered when route data existed: `{(route condition) && (<route section>)}`
+   - **After**: Route section is always rendered with conditional content: `<route section>{(route condition) ? (<route content>) : (<placeholder>)}</route section>`
+
+2. **Always Show Route Section**
+   - List view now always renders a route section container (`<div className="mb-3">`)
+   - Content inside is conditional based on whether route data exists
+   - Matches the grid view pattern which has comment "Route section - always present for consistent height"
+
+3. **Added "No Route Information" Placeholder**
+   - Events without any route data now show the same placeholder as grid view
+   - Placeholder shows dashed border, map icon, and helpful messaging
+   - Maintains appropriate 300px height for list view (vs 500px for grid view)
+
+### Implementation Details
+
+#### Structural Changes Made
+- **File**: `frontend/src/components/EventCard.tsx`
+- **Location**: Lines 122-221 (list view route section)
+- **Type**: Conditional logic restructuring
+
+#### Before (Problematic Pattern):
+```typescript
+{(event.route || event.distanceMeters > 0 || event.elevationGainMeters > 0) && (
+  <div className="mb-3">
+    // Route content only shown when data exists
+  </div>
+)}
+// No placeholder for events without route data
+```
+
+#### After (Fixed Pattern):
+```typescript
+<div className="mb-3">
+  {(event.route || event.distanceMeters > 0 || event.elevationGainMeters > 0) ? (
+    <div>
+      // Route content when data exists
+    </div>
+  ) : (
+    <div>
+      // "No Route Information" placeholder when no data
+    </div>
+  )}
+</div>
+```
+
+### User Experience Improvements
+
+**Before**: Events without route information showed no route section at all in list view, appearing incomplete compared to grid view
+
+**After**: All events show a route section - either with actual route data or with a clear "No Route Information" placeholder
+
+**Benefits**:
+- ✅ Consistent visual appearance between list and grid views
+- ✅ All events now have consistent card structure and height
+- ✅ Clear indication when route information is missing
+- ✅ Professional appearance with proper placeholder messaging
+- ✅ Maintains appropriate sizing for list view layout
+
+### Code Quality Notes
+
+- **Structural Consistency**: List view now matches grid view pattern for route section rendering
+- **Visual Parity**: Both view modes handle missing route data consistently
+- **Maintainability**: Single pattern for route section rendering across both views
+- **User Guidance**: Clear messaging about missing route information
+- **Performance**: No impact on rendering performance
+
+### Bug Fixes Applied
+
+- **SVG Path Error**: Fixed malformed SVG path attribute from "713" to "013" in arc flag
+- **Conditional Logic**: Restructured to ensure placeholder shows for events without route data
+
+### Verification
+
+- ✅ List view now shows "No Route Information" placeholder for events without route data
+- ✅ Route section always renders, ensuring consistent card appearance
+- ✅ Placeholder styling matches grid view but with appropriate dimensions for list view
+- ✅ No breaking changes to existing route display functionality
+- ✅ Component structure matches established patterns
+
+The implementation successfully ensures that all events in list view show a route section, either with actual route information or with a clear "No Route Information" placeholder, creating visual consistency with the grid view.
