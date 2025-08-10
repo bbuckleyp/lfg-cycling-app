@@ -42,6 +42,24 @@ router.get('/', async (req: Request, res: Response) => {
   }
 });
 
+// Get user's events (protected) - MUST come before /:eventId route
+router.get('/user/my-events', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { type: eventType, status } = req.query;
+    
+    const filters = {
+      eventType: eventType as 'ride' | 'race' | undefined,
+      status: status as 'active' | 'cancelled' | 'completed' | undefined,
+    };
+
+    const events = await eventService.getUserEvents(req.user!.id, filters);
+    res.json({ events });
+  } catch (error: any) {
+    console.error('Error fetching user events:', error);
+    res.status(500).json({ error: 'Failed to fetch user events' });
+  }
+});
+
 // Get single event by ID
 router.get('/:eventId', async (req: Request, res: Response) => {
   try {
@@ -157,24 +175,6 @@ router.delete('/:eventId', authenticateToken, async (req: Request, res: Response
     } else {
       res.status(500).json({ error: 'Failed to delete event' });
     }
-  }
-});
-
-// Get user's events (protected)
-router.get('/user/my-events', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { type: eventType, status } = req.query;
-    
-    const filters = {
-      eventType: eventType as 'ride' | 'race' | undefined,
-      status: status as 'active' | 'cancelled' | 'completed' | undefined,
-    };
-
-    const events = await eventService.getUserEvents(req.user!.id, filters);
-    res.json({ events });
-  } catch (error: any) {
-    console.error('Error fetching user events:', error);
-    res.status(500).json({ error: 'Failed to fetch user events' });
   }
 });
 

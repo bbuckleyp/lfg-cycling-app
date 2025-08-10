@@ -4,12 +4,14 @@ interface RideWithGPSEmbedProps {
   routeId: string;
   routeName: string;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const RideWithGPSEmbed: React.FC<RideWithGPSEmbedProps> = ({ 
   routeId, 
   routeName, 
-  className = "w-full h-96" 
+  className = "w-full h-96",
+  style
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,14 +26,16 @@ const RideWithGPSEmbed: React.FC<RideWithGPSEmbedProps> = ({
     setIsLoading(true);
     setHasError(false);
 
-    // Create iframe element
+    // Create iframe element with elevation graph
     const iframe = document.createElement('iframe');
-    iframe.src = `https://ridewithgps.com/routes/${routeId}/embed`;
-    iframe.width = '100%';
-    iframe.height = '100%';
+    iframe.src = `https://ridewithgps.com/embeds?type=route&id=${routeId}&sampleGraph=true`;
+    iframe.style.width = '1px';
+    iframe.style.minWidth = '100%';
+    iframe.style.height = '700px';
+    iframe.style.border = 'none';
+    iframe.setAttribute('scrolling', 'no');
     iframe.allowFullscreen = true;
     iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-top-navigation-by-user-activation');
-    iframe.style.border = 'none';
     iframe.title = `RideWithGPS Route: ${routeName}`;
 
     // Timeout to show fallback if iframe doesn't load
@@ -91,7 +95,7 @@ const RideWithGPSEmbed: React.FC<RideWithGPSEmbedProps> = ({
   }
 
   return (
-    <div className={`${className} relative`}>
+    <div className={`${className} relative`} style={style}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-50 rounded-lg">
           <div className="text-center">
