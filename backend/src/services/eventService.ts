@@ -1,24 +1,61 @@
 import { PrismaClient, EventType, Pace, EventStatus } from '@prisma/client';
 import { CreateEventRequest, UpdateEventRequest, Event, EventWithDetails, EventFilters } from '../types/event';
 import { notificationService } from './notificationService';
+import { ridewithgpsService } from './ridewithgpsService';
 
 const prisma = new PrismaClient();
 
 export class EventService {
   async createEvent(organizerId: number, data: CreateEventRequest): Promise<Event> {
-    // Create route if Strava route data is provided
+    // Handle route creation with duplicate checking
     let routeId = data.routeId;
+    
+    // Handle Strava route
     if (data.stravaRouteData && !routeId) {
-      const route = await prisma.routes.create({
-        data: {
-          strava_route_id: BigInt(data.stravaRouteData.stravaRouteId),
-          name: data.stravaRouteData.name,
-          distance_meters: Math.round(data.stravaRouteData.distance),
-          elevation_gain_meters: Math.round(data.stravaRouteData.elevationGain),
-          estimated_moving_time: Math.round(data.stravaRouteData.estimatedTime),
-        },
+      // Check if route already exists
+      const existingRoute = await prisma.routes.findUnique({
+        where: { strava_route_id: BigInt(data.stravaRouteData.stravaRouteId) },
       });
-      routeId = route.id;
+      
+      if (existingRoute) {
+        routeId = existingRoute.id;
+      } else {
+        const route = await prisma.routes.create({
+          data: {
+            strava_route_id: BigInt(data.stravaRouteData.stravaRouteId),
+            route_source: 'strava',
+            name: data.stravaRouteData.name,
+            distance_meters: Math.round(data.stravaRouteData.distance),
+            elevation_gain_meters: Math.round(data.stravaRouteData.elevationGain),
+            estimated_moving_time: Math.round(data.stravaRouteData.estimatedTime),
+          },
+        });
+        routeId = route.id;
+      }
+    }
+    
+    // Handle RideWithGPS route
+    if (data.ridewithgpsRouteData && !routeId) {
+      // Check if route already exists
+      const existingRoute = await prisma.routes.findUnique({
+        where: { ridewithgps_route_id: data.ridewithgpsRouteData.ridewithgpsRouteId },
+      });
+      
+      if (existingRoute) {
+        routeId = existingRoute.id;
+      } else {
+        const route = await prisma.routes.create({
+          data: {
+            ridewithgps_route_id: data.ridewithgpsRouteData.ridewithgpsRouteId,
+            route_source: 'ridewithgps',
+            name: data.ridewithgpsRouteData.name,
+            distance_meters: Math.round(data.ridewithgpsRouteData.distance),
+            elevation_gain_meters: data.ridewithgpsRouteData.elevationGain ? Math.round(data.ridewithgpsRouteData.elevationGain) : null,
+            estimated_moving_time: data.ridewithgpsRouteData.estimatedTime ? Math.round(data.ridewithgpsRouteData.estimatedTime) : null,
+          },
+        });
+        routeId = route.id;
+      }
     }
 
     const event = await prisma.events.create({
@@ -57,6 +94,8 @@ export class EventService {
           select: {
             id: true,
             strava_route_id: true,
+            ridewithgps_route_id: true,
+            route_source: true,
             name: true,
             description: true,
             distance_meters: true,
@@ -173,6 +212,8 @@ export class EventService {
           select: {
             id: true,
             strava_route_id: true,
+            ridewithgps_route_id: true,
+            route_source: true,
             name: true,
             description: true,
             distance_meters: true,
@@ -230,6 +271,8 @@ export class EventService {
           select: {
             id: true,
             strava_route_id: true,
+            ridewithgps_route_id: true,
+            route_source: true,
             name: true,
             description: true,
             distance_meters: true,
@@ -259,6 +302,8 @@ export class EventService {
   }
 
   async updateEvent(eventId: number, organizerId: number, data: UpdateEventRequest): Promise<Event> {
+    console.log('EventService: updateEvent called with data:', JSON.stringify(data, null, 2));
+    
     // Check if event exists and user is organizer
     const existingEvent = await prisma.events.findUnique({
       where: { id: eventId },
@@ -272,19 +317,76 @@ export class EventService {
       throw new Error('Only the organizer can update this event');
     }
 
-    // Create route if Strava route data is provided
+    // Handle route updates with explicit clearing
     let routeId = data.routeId;
-    if (data.stravaRouteData && !routeId) {
-      const route = await prisma.routes.create({
-        data: {
-          strava_route_id: BigInt(data.stravaRouteData.stravaRouteId),
-          name: data.stravaRouteData.name,
-          distance_meters: Math.round(data.stravaRouteData.distance),
-          elevation_gain_meters: Math.round(data.stravaRouteData.elevationGain),
-          estimated_moving_time: Math.round(data.stravaRouteData.estimatedTime),
-        },
+    
+    // Handle Strava route
+    console.log('EventService: Checking stravaRouteData:', data.stravaRouteData);
+    console.log('EventService: routeId before processing:', routeId);
+    if (data.stravaRouteData) {
+      console.log('EventService: Processing Strava route data');
+      // Check if route already exists
+      const existingRoute = await prisma.routes.findUnique({
+        where: { strava_route_id: BigInt(data.stravaRouteData.stravaRouteId) },
       });
-      routeId = route.id;
+      
+      if (existingRoute) {
+        console.log('EventService: Using existing Strava route ID:', existingRoute.id);
+        routeId = existingRoute.id;
+      } else {
+        console.log('EventService: Creating new Strava route in database');
+        const route = await prisma.routes.create({
+          data: {
+            strava_route_id: BigInt(data.stravaRouteData.stravaRouteId),
+            route_source: 'strava',
+            name: data.stravaRouteData.name,
+            distance_meters: Math.round(data.stravaRouteData.distance),
+            elevation_gain_meters: Math.round(data.stravaRouteData.elevationGain),
+            estimated_moving_time: Math.round(data.stravaRouteData.estimatedTime),
+          },
+        });
+        console.log('EventService: Created new Strava route with ID:', route.id);
+        routeId = route.id;
+      }
+    } else if (data.stravaRouteData === null && data.ridewithgpsRouteData === null) {
+      // Only clear route if both route types are explicitly null
+      routeId = null;
+    }
+    
+    // Handle RideWithGPS route
+    if (data.ridewithgpsRouteData) {
+      console.log('EventService: Processing RideWithGPS route data:', data.ridewithgpsRouteData);
+      // Check if route already exists
+      const existingRoute = await prisma.routes.findUnique({
+        where: { ridewithgps_route_id: data.ridewithgpsRouteData.ridewithgpsRouteId },
+      });
+      
+      if (existingRoute) {
+        // Update existing route with new scraped data
+        const updatedRoute = await prisma.routes.update({
+          where: { id: existingRoute.id },
+          data: {
+            name: data.ridewithgpsRouteData.name,
+            distance_meters: Math.round(data.ridewithgpsRouteData.distance),
+            elevation_gain_meters: data.ridewithgpsRouteData.elevationGain ? Math.round(data.ridewithgpsRouteData.elevationGain) : null,
+            estimated_moving_time: data.ridewithgpsRouteData.estimatedTime ? Math.round(data.ridewithgpsRouteData.estimatedTime) : null,
+          },
+        });
+        console.log('EventService: Updated existing RideWithGPS route with new scraped data:', updatedRoute.id);
+        routeId = existingRoute.id;
+      } else {
+        const route = await prisma.routes.create({
+          data: {
+            ridewithgps_route_id: data.ridewithgpsRouteData.ridewithgpsRouteId,
+            route_source: 'ridewithgps',
+            name: data.ridewithgpsRouteData.name,
+            distance_meters: Math.round(data.ridewithgpsRouteData.distance),
+            elevation_gain_meters: data.ridewithgpsRouteData.elevationGain ? Math.round(data.ridewithgpsRouteData.elevationGain) : null,
+            estimated_moving_time: data.ridewithgpsRouteData.estimatedTime ? Math.round(data.ridewithgpsRouteData.estimatedTime) : null,
+          },
+        });
+        routeId = route.id;
+      }
     }
 
     const updateData: any = {
@@ -299,7 +401,11 @@ export class EventService {
     if (data.pace !== undefined) updateData.pace = data.pace as Pace;
     if (data.isPublic !== undefined) updateData.is_public = data.isPublic;
     if (data.status !== undefined) updateData.status = data.status as EventStatus;
-    if (routeId !== undefined) updateData.route_id = routeId;
+    if (routeId !== undefined) {
+      console.log('EventService: Setting event route_id to:', routeId);
+      updateData.route_id = routeId;
+    }
+    // Handle explicit null values for clearing route data
     if (data.distanceMeters !== undefined) updateData.distance_meters = data.distanceMeters;
     if (data.elevationGainMeters !== undefined) updateData.elevation_gain_meters = data.elevationGainMeters;
 
@@ -382,7 +488,9 @@ export class EventService {
       },
       route: event.routes ? {
         id: event.routes.id,
-        stravaRouteId: event.routes.strava_route_id.toString(),
+        stravaRouteId: event.routes.strava_route_id ? event.routes.strava_route_id.toString() : undefined,
+        ridewithgpsRouteId: event.routes.ridewithgps_route_id || undefined,
+        routeSource: event.routes.route_source as 'strava' | 'ridewithgps',
         name: event.routes.name,
         description: event.routes.description || undefined,
         distanceMeters: event.routes.distance_meters,

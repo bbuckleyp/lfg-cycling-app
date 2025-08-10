@@ -121,6 +121,9 @@ export const eventsApi = {
 
   delete: (eventId: number) =>
     api.delete(`/events/${eventId}`).then(res => res.data),
+
+  parseRidewithgpsUrl: (data: { url: string; customName?: string }) =>
+    api.post('/events/parse-ridewithgps-url', data).then(res => res.data),
 };
 
 export const rsvpApi = {

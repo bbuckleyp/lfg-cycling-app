@@ -90,7 +90,9 @@ model events {
 
 model routes {
   id                    Int      @id @default(autoincrement())
-  strava_route_id       BigInt   @unique
+  strava_route_id       BigInt?  @unique
+  ridewithgps_route_id  String?  @unique
+  route_source          String   // 'strava' or 'ridewithgps'
   name                  String
   description           String?
   distance_meters       Int

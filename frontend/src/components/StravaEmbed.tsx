@@ -31,6 +31,29 @@ const StravaEmbed: React.FC<StravaEmbedProps> = ({
       containerRef.current.innerHTML = '';
     }
 
+    // Add CSS to ensure Strava embed content is constrained
+    const styleId = 'strava-embed-containment';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .strava-embed-placeholder * {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .strava-embed-placeholder iframe {
+          max-width: 100% !important;
+          width: 100% !important;
+          height: auto !important;
+          min-height: 400px !important;
+        }
+        .strava-embed-placeholder {
+          overflow: visible !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     // Create the embed container
     const embedDiv = document.createElement('div');
     embedDiv.className = 'strava-embed-placeholder';
@@ -269,11 +292,13 @@ const StravaEmbed: React.FC<StravaEmbedProps> = ({
     <div className={className}>
       <div 
         ref={containerRef}
-        className="w-full h-full rounded-lg overflow-hidden border border-gray-200"
+        className="w-full rounded-lg border border-gray-200"
         style={{ 
-          minHeight: '600px', 
+          minHeight: '400px',
           height: 'auto',
-          aspectRatio: 'auto'
+          maxWidth: '100%',
+          position: 'relative',
+          overflow: 'visible'
         }}
       />
     </div>

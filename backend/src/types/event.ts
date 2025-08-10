@@ -26,7 +26,9 @@ export interface EventWithDetails extends Event {
   };
   route?: {
     id: number;
-    stravaRouteId: string;
+    stravaRouteId?: string;
+    ridewithgpsRouteId?: string;
+    routeSource: 'strava' | 'ridewithgps';
     name: string;
     description?: string;
     distanceMeters: number;
@@ -58,6 +60,13 @@ export interface CreateEventRequest {
     elevationGain: number;
     estimatedTime: number;
   };
+  ridewithgpsRouteData?: {
+    ridewithgpsRouteId: string;
+    name: string;
+    distance: number;
+    elevationGain?: number;
+    estimatedTime?: number;
+  };
   distanceMeters?: number;
   elevationGainMeters?: number;
 }
@@ -70,16 +79,23 @@ export interface UpdateEventRequest {
   startLocation?: string;
   pace?: 'social' | 'tempo' | 'race';
   isPublic?: boolean;
-  routeId?: number;
+  routeId?: number | null;
   stravaRouteData?: {
     stravaRouteId: string;
     name: string;
     distance: number;
     elevationGain: number;
     estimatedTime: number;
-  };
-  distanceMeters?: number;
-  elevationGainMeters?: number;
+  } | null;
+  ridewithgpsRouteData?: {
+    ridewithgpsRouteId: string;
+    name: string;
+    distance: number;
+    elevationGain?: number;
+    estimatedTime?: number;
+  } | null;
+  distanceMeters?: number | null;
+  elevationGainMeters?: number | null;
   status?: 'active' | 'cancelled' | 'completed';
 }
 
