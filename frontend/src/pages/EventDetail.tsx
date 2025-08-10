@@ -11,6 +11,7 @@ import CommentList from '../components/CommentList';
 import RouteMap from '../components/RouteMap';
 import ElevationProfile from '../components/ElevationProfile';
 import StravaEmbed from '../components/StravaEmbed';
+import RideWithGPSEmbed from '../components/RideWithGPSEmbed';
 
 const EventDetail: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -39,6 +40,10 @@ const EventDetail: React.FC = () => {
       setLoading(true);
       setError('');
       const response = await eventsApi.getById(parseInt(eventId));
+      console.log('EventDetail: Fetched event data:', response.event);
+      if (response.event.route) {
+        console.log('EventDetail: Route data:', response.event.route);
+      }
       setEvent(response.event);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load event');
@@ -321,14 +326,21 @@ const EventDetail: React.FC = () => {
                 </div>
               </div>
 
-              {/* Show Strava embed for Strava routes, otherwise show RouteMap for polyline routes */}
+              {/* Show Strava embed for Strava routes, RideWithGPS embed for RideWithGPS routes, otherwise show RouteMap for polyline routes */}
               {event.route.stravaRouteId ? (
                 <StravaEmbed
                   stravaRouteId={event.route.stravaRouteId}
                   routeName={event.route.name}
                   distance={event.route.distanceMeters}
                   elevationGain={event.route.elevationGainMeters}
-                  className="h-96 w-full"
+                  className="w-full"
+                />
+              ) : event.route.ridewithgpsRouteId ? (
+                <RideWithGPSEmbed
+                  routeId={event.route.ridewithgpsRouteId}
+                  routeName={event.route.name}
+                  className="w-full"
+                  style={{ height: '700px' }}
                 />
               ) : event.route.polyline ? (
                 <>

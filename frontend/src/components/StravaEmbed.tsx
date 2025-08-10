@@ -44,6 +44,11 @@ const StravaEmbed: React.FC<StravaEmbedProps> = ({
         .strava-embed-placeholder iframe {
           max-width: 100% !important;
           width: 100% !important;
+          height: auto !important;
+          min-height: 400px !important;
+        }
+        .strava-embed-placeholder {
+          overflow: visible !important;
         }
       `;
       document.head.appendChild(style);
@@ -284,15 +289,16 @@ const StravaEmbed: React.FC<StravaEmbedProps> = ({
   }
 
   return (
-    <div className={`${className} overflow-hidden`}>
+    <div className={className}>
       <div 
         ref={containerRef}
-        className="w-full rounded-lg overflow-hidden border border-gray-200"
+        className="w-full rounded-lg border border-gray-200"
         style={{ 
-          minHeight: '500px',
+          minHeight: '400px',
           height: 'auto',
           maxWidth: '100%',
-          position: 'relative'
+          position: 'relative',
+          overflow: 'visible'
         }}
       />
     </div>

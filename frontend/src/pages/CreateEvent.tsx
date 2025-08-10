@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { eventsApi } from '../services/api';
-import StravaRouteSelector from '../components/StravaRouteSelector';
+import RouteSelector from '../components/RouteSelector';
 
 type EventType = 'ride' | 'race';
 
@@ -18,8 +18,10 @@ const createEventSchema = z.object({
   pace: z.enum(['social', 'tempo', 'race'], { 
     errorMap: () => ({ message: 'Please select a pace' })
   }),
-  stravaRoute: z.object({
-    stravaId: z.string(),
+  route: z.object({
+    type: z.enum(['strava', 'ridewithgps', 'manual', 'none']),
+    stravaId: z.string().optional(),
+    ridewithgpsId: z.string().optional(),
     name: z.string(),
     distance: z.number(),
     elevationGain: z.number(),
@@ -33,17 +35,23 @@ type CreateEventFormData = z.infer<typeof createEventSchema>;
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { eventId } = useParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [localStravaRoute, setLocalStravaRoute] = useState<any>(undefined);
+  const [selectedRoute, setSelectedRoute] = useState<any>(undefined);
+  const [existingEvent, setExistingEvent] = useState<any>(null);
+  
+  // Determine if we're editing
+  const isEditMode = Boolean(eventId);
 
   // Get event type from URL params, default to 'ride'
-  const activeEventType: EventType = (searchParams.get('type') as EventType) || 'ride';
+  const activeEventType: EventType = (searchParams.get('type') as EventType) || existingEvent?.eventType || 'ride';
 
   const {
     register,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<CreateEventFormData>({
     resolver: zodResolver(createEventSchema),
@@ -51,6 +59,61 @@ const CreateEvent: React.FC = () => {
       pace: activeEventType === 'race' ? 'race' : 'social',
     },
   });
+
+  // Fetch existing event data if in edit mode
+  useEffect(() => {
+    const fetchEventData = async () => {
+      if (isEditMode && eventId) {
+        try {
+          setIsLoading(true);
+          const response = await eventsApi.getById(parseInt(eventId));
+          const event = response.event;
+          setExistingEvent(event);
+          
+          // Populate form fields
+          reset({
+            title: event.title,
+            description: event.description || '',
+            startDate: event.startDate,
+            startTime: event.startTime,
+            startLocation: event.startLocation,
+            pace: event.pace,
+          });
+          
+          // Set route if exists
+          if (event.route) {
+            const routeData = {
+              type: event.route.routeSource,
+              stravaId: event.route.stravaRouteId,
+              ridewithgpsId: event.route.ridewithgpsRouteId,
+              name: event.route.name,
+              distance: event.route.distanceMeters,
+              elevationGain: event.route.elevationGainMeters || 0,
+              estimatedTime: event.route.estimatedMovingTime || 0,
+            };
+            setSelectedRoute(routeData);
+          } else if (event.distanceMeters || event.elevationGainMeters) {
+            // Manual route data
+            const routeData = {
+              type: 'manual',
+              name: 'Manual Route Details',
+              distance: event.distanceMeters || 0,
+              elevationGain: event.elevationGainMeters || 0,
+              estimatedTime: 0,
+              isNoRoute: true,
+            };
+            setSelectedRoute(routeData);
+          }
+        } catch (err: any) {
+          setError(err.response?.data?.error || 'Failed to fetch event data');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchEventData();
+  }, [eventId, isEditMode, reset]);
 
   // Update pace when event type changes
   useEffect(() => {
@@ -79,21 +142,30 @@ const CreateEvent: React.FC = () => {
         startTime: data.startTime,
         startLocation: data.startLocation,
         pace: data.pace,
-        stravaRouteData: (localStravaRoute && !localStravaRoute.isNoRoute) ? {
-          stravaRouteId: localStravaRoute.stravaId,
-          name: localStravaRoute.name,
-          distance: localStravaRoute.distance,
-          elevationGain: localStravaRoute.elevationGain,
-          estimatedTime: localStravaRoute.estimatedTime,
+        stravaRouteData: (selectedRoute?.type === 'strava') ? {
+          stravaRouteId: selectedRoute.stravaId,
+          name: selectedRoute.name,
+          distance: selectedRoute.distance,
+          elevationGain: selectedRoute.elevationGain,
+          estimatedTime: selectedRoute.estimatedTime,
         } : undefined,
-        distanceMeters: (localStravaRoute?.isNoRoute && localStravaRoute.distance > 0) ? Math.round(localStravaRoute.distance) : undefined,
-        elevationGainMeters: (localStravaRoute?.isNoRoute && localStravaRoute.elevationGain > 0) ? Math.round(localStravaRoute.elevationGain) : undefined,
+        ridewithgpsRouteData: (selectedRoute?.type === 'ridewithgps') ? {
+          ridewithgpsRouteId: selectedRoute.ridewithgpsId,
+          name: selectedRoute.name,
+          distance: selectedRoute.distance,
+          elevationGain: selectedRoute.elevationGain,
+          estimatedTime: selectedRoute.estimatedTime,
+        } : undefined,
+        distanceMeters: (selectedRoute?.type === 'manual' && selectedRoute.distance > 0) ? Math.round(selectedRoute.distance) : undefined,
+        elevationGainMeters: (selectedRoute?.type === 'manual' && selectedRoute.elevationGain > 0) ? Math.round(selectedRoute.elevationGain) : undefined,
       };
 
-      const response = await eventsApi.create(createData);
+      const response = isEditMode 
+        ? await eventsApi.update(parseInt(eventId!), createData)
+        : await eventsApi.create(createData);
       navigate(`/events/${response.event.id}`);
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to create event');
+      setError(err.response?.data?.error || `Failed to ${isEditMode ? 'update' : 'create'} event`);
     } finally {
       setIsLoading(false);
     }
@@ -110,36 +182,43 @@ const CreateEvent: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Create Event</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isEditMode ? 'Edit Event' : 'Create Event'}
+        </h1>
         <p className="mt-2 text-gray-600">
-          Create a new {activeEventType} for the cycling community to join.
+          {isEditMode 
+            ? `Update your ${activeEventType} details.`
+            : `Create a new ${activeEventType} for the cycling community to join.`
+          }
         </p>
 
-        {/* Event Type Toggle */}
-        <div className="mt-6 inline-flex rounded-lg bg-gray-100 p-1">
-          <button
-            type="button"
-            onClick={() => handleEventTypeToggle('ride')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeEventType === 'ride'
-                ? 'bg-white text-primary-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Create Ride
-          </button>
-          <button
-            type="button"
-            onClick={() => handleEventTypeToggle('race')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeEventType === 'race'
-                ? 'bg-white text-orange-600 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Create Race
-          </button>
-        </div>
+        {/* Event Type Toggle - only show in create mode */}
+        {!isEditMode && (
+          <div className="mt-6 inline-flex rounded-lg bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => handleEventTypeToggle('ride')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeEventType === 'ride'
+                  ? 'bg-white text-primary-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Create Ride
+            </button>
+            <button
+              type="button"
+              onClick={() => handleEventTypeToggle('race')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeEventType === 'race'
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Create Race
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -271,9 +350,9 @@ const CreateEvent: React.FC = () => {
         )}
 
         <div>
-          <StravaRouteSelector
-            selectedRoute={localStravaRoute}
-            onRouteSelect={(route) => setLocalStravaRoute(route)}
+          <RouteSelector
+            selectedRoute={selectedRoute}
+            onRouteSelect={(route) => setSelectedRoute(route)}
             error={undefined}
           />
         </div>
@@ -299,10 +378,10 @@ const CreateEvent: React.FC = () => {
             {isLoading ? (
               <>
                 <div className="animate-spin -ml-1 mr-3 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                Creating...
+                {isEditMode ? 'Updating...' : 'Creating...'}
               </>
             ) : (
-              `Create ${getEventTypeDisplayName(activeEventType)}`
+              `${isEditMode ? 'Update' : 'Create'} ${getEventTypeDisplayName(activeEventType)}`
             )}
           </button>
         </div>

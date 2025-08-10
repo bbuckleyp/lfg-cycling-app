@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { eventService } from '../services/eventService';
 import { createEventSchema, updateEventSchema } from '../utils/validation';
 import { authenticateToken } from '../middleware/auth';
+import { ridewithgpsService } from '../services/ridewithgpsService';
 
 const router = Router();
 
@@ -39,6 +40,27 @@ router.get('/', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('Error fetching events:', error);
     res.status(500).json({ error: 'Failed to fetch events' });
+  }
+});
+
+// Parse RideWithGPS URL to get route data (protected)
+router.post('/parse-ridewithgps-url', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { url, customName } = req.body;
+    
+    if (!url) {
+      return res.status(400).json({ error: 'URL is required' });
+    }
+    
+    const routeData = await ridewithgpsService.createRouteFromUrl(url, customName);
+    if (!routeData) {
+      return res.status(400).json({ error: 'Invalid RideWithGPS URL' });
+    }
+    
+    res.json({ routeData });
+  } catch (error: any) {
+    console.error('Error parsing RideWithGPS URL:', error);
+    res.status(400).json({ error: error.message || 'Failed to parse RideWithGPS URL' });
   }
 });
 

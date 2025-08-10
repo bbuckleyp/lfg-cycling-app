@@ -980,6 +980,76 @@ The implementation successfully addresses the original issue by providing consis
 
 ---
 
+# Task: Fix Route Swap Issue in Event Editing
+
+## Problem Description
+When editing events to change routes, selecting a route from Strava and clicking Update doesn't import the route or load the embedding. Console shows Strava API response but no actual route update occurs. Backend shows tsx process killing issues.
+
+## Todo Items
+
+- [ ] Investigate the event editing route swap issue by examining the frontend EditRide component
+- [ ] Check the backend eventService.ts for any issues causing the tsx process killing
+- [ ] Examine the API endpoint handling route updates for events
+- [ ] Check validation logic in utils/validation.ts for any infinite loops or blocking operations
+- [ ] Test the route selection flow to identify where it's failing
+- [ ] Fix the root cause of the route swap not working
+
+## Analysis
+Starting investigation to identify root cause of route swapping failure during event editing.
+
+## Review
+
+### Root Cause Found and Fixed
+
+**Primary Issue**: Backend validation schema was incorrectly requiring `distance` to be **positive** (`z.number().positive()`) for RideWithGPS routes, but the RideWithGPS service returns placeholder values of `0` for distance, elevation, and time until the embed loads the actual values.
+
+### Changes Made
+
+1. **Fixed Validation Schema** (`backend/src/utils/validation.ts`):
+   - Changed RideWithGPS route validation for both `createEventSchema` and `updateEventSchema`
+   - Updated `distance: z.number().positive()` to `distance: z.number().min(0)` 
+   - This allows the placeholder `0` values that RideWithGPS service returns
+
+2. **Added Debug Logging** (`backend/src/services/eventService.ts`):
+   - Added comprehensive logging to `updateEvent` method to trace data flow
+   - Added specific logging for RideWithGPS route processing
+
+3. **Backend Process Stability**:
+   - Killed conflicting processes on port 5002
+   - Restarted backend cleanly on correct port
+   - Frontend running on port 5174, backend on 5002
+
+### Technical Details
+
+**The Issue Flow**:
+1. User selects RideWithGPS route in EditRide page ✅
+2. Route selector calls `/events/parse-ridewithgps-url` ✅  
+3. Backend returns route data with `distance: 0` (placeholder) ✅
+4. User clicks "Update Ride" - form submits `ridewithgpsRouteData` with `distance: 0`
+5. **Backend validation REJECTS** because `distance: 0` fails `.positive()` validation ❌
+6. API returns "Validation failed" error ❌
+
+**The Fix**:
+- Changed validation to accept `distance >= 0` instead of `distance > 0`
+- RideWithGPS routes now pass validation with placeholder values
+- Actual route data (distance, elevation) displays in the embed on EventDetail page
+
+### Expected Behavior Now
+
+1. **Route Selection**: User can select RideWithGPS routes from EditRide page
+2. **Route Import**: RideWithGPS URLs are parsed and validated successfully  
+3. **Route Saving**: Events update properly with RideWithGPS route data
+4. **Route Display**: RideWithGPS embeds show on EventDetail pages with full route information
+
+### Files Modified
+
+- `backend/src/utils/validation.ts` - Fixed validation schemas to allow distance: 0
+- `backend/src/services/eventService.ts` - Added debugging logs
+
+The route swap issue should now be resolved. The backend will accept RideWithGPS routes with placeholder data and users should be able to successfully update events with new route selections.
+
+---
+
 # Task: Add "No Route Information" Placeholder to List View
 
 ## Problem Analysis

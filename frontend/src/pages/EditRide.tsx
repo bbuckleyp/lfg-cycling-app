@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { eventsApi } from '../services/api';
 import type { EventWithDetails } from '../types/event';
-import StravaRouteSelector from '../components/StravaRouteSelector';
+import RouteSelector from '../components/RouteSelector';
 
 const editRideSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
@@ -17,8 +17,10 @@ const editRideSchema = z.object({
   pace: z.enum(['social', 'tempo', 'race'], { 
     errorMap: () => ({ message: 'Please select a pace' })
   }),
-  stravaRoute: z.object({
-    stravaId: z.string(),
+  route: z.object({
+    type: z.enum(['strava', 'ridewithgps', 'manual', 'none']),
+    stravaId: z.string().optional(),
+    ridewithgpsId: z.string().optional(),
     name: z.string(),
     distance: z.number(),
     elevationGain: z.number(),
@@ -37,7 +39,7 @@ const EditRide: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [localStravaRoute, setLocalStravaRoute] = useState<any>(undefined);
+  const [selectedRoute, setSelectedRoute] = useState<any>(undefined);
 
 
   const {
@@ -62,15 +64,30 @@ const EditRide: React.FC = () => {
         const eventData = await eventsApi.getById(parseInt(eventId));
         setEvent(eventData.event);
         
-        // Set local Strava route state
-        const initialStravaRoute = eventData.event.route ? {
-          stravaId: eventData.event.route.stravaRouteId,
-          name: eventData.event.route.name,
-          distance: eventData.event.route.distanceMeters,
-          elevationGain: eventData.event.route.elevationGainMeters || 0,
-          estimatedTime: eventData.event.route.estimatedMovingTime || 0,
-        } : undefined;
-        setLocalStravaRoute(initialStravaRoute);
+        // Set route state to match RouteSelector interface
+        let initialRoute = undefined;
+        if (eventData.event.route) {
+          initialRoute = {
+            type: eventData.event.route.routeSource,
+            stravaId: eventData.event.route.stravaRouteId,
+            ridewithgpsId: eventData.event.route.ridewithgpsRouteId,
+            name: eventData.event.route.name,
+            distance: eventData.event.route.distanceMeters,
+            elevationGain: eventData.event.route.elevationGainMeters || 0,
+            estimatedTime: eventData.event.route.estimatedMovingTime || 0,
+          };
+        } else if (eventData.event.distanceMeters || eventData.event.elevationGainMeters) {
+          // Manual route data
+          initialRoute = {
+            type: 'manual',
+            name: 'Manual Route Details',
+            distance: eventData.event.distanceMeters || 0,
+            elevationGain: eventData.event.elevationGainMeters || 0,
+            estimatedTime: 0,
+            isNoRoute: true,
+          };
+        }
+        setSelectedRoute(initialRoute);
 
         // Reset form with event data (excluding stravaRoute)
         reset({
@@ -105,18 +122,28 @@ const EditRide: React.FC = () => {
         startTime: data.startTime,
         startLocation: data.startLocation,
         pace: data.pace,
-        stravaRouteData: (localStravaRoute && !localStravaRoute.isNoRoute) ? {
-          stravaRouteId: localStravaRoute.stravaId,
-          name: localStravaRoute.name,
-          distance: localStravaRoute.distance,
-          elevationGain: localStravaRoute.elevationGain,
-          estimatedTime: localStravaRoute.estimatedTime,
-        } : undefined,
-        distanceMeters: (localStravaRoute?.isNoRoute && localStravaRoute.distance > 0) ? Math.round(localStravaRoute.distance) : undefined,
-        elevationGainMeters: (localStravaRoute?.isNoRoute && localStravaRoute.elevationGain > 0) ? Math.round(localStravaRoute.elevationGain) : undefined,
+        // Always include route fields to ensure proper clearing
+        stravaRouteData: (selectedRoute?.type === 'strava') ? {
+          stravaRouteId: selectedRoute.stravaId,
+          name: selectedRoute.name,
+          distance: selectedRoute.distance,
+          elevationGain: selectedRoute.elevationGain,
+          estimatedTime: selectedRoute.estimatedTime,
+        } : null, // Explicitly set to null to clear
+        ridewithgpsRouteData: (selectedRoute?.type === 'ridewithgps') ? {
+          ridewithgpsRouteId: selectedRoute.ridewithgpsId,
+          name: selectedRoute.name,
+          distance: selectedRoute.distance,
+          elevationGain: selectedRoute.elevationGain,
+          estimatedTime: selectedRoute.estimatedTime,
+        } : null, // Explicitly set to null to clear
+        routeId: selectedRoute ? undefined : null, // Clear route_id when no route selected
+        distanceMeters: (selectedRoute?.type === 'manual' && selectedRoute.distance > 0) ? Math.round(selectedRoute.distance) : null, // Explicitly clear
+        elevationGainMeters: (selectedRoute?.type === 'manual' && selectedRoute.elevationGain > 0) ? Math.round(selectedRoute.elevationGain) : null, // Explicitly clear
       };
 
       await eventsApi.update(parseInt(eventId), updateData);
+      console.log('EditRide: Update successful, navigating to event detail page');
       navigate(`/events/${eventId}`);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update event');
@@ -281,11 +308,9 @@ const EditRide: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Route (Optional)
           </label>
-          <StravaRouteSelector
-            selectedRoute={localStravaRoute}
-            onRouteSelect={(route) => {
-              setLocalStravaRoute(route);
-            }}
+          <RouteSelector
+            selectedRoute={selectedRoute}
+            onRouteSelect={(route) => setSelectedRoute(route)}
             error={undefined}
           />
         </div>

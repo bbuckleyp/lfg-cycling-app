@@ -26,7 +26,9 @@ export interface EventWithDetails extends Event {
   };
   route?: {
     id: number;
-    stravaRouteId: string;
+    stravaRouteId?: string;
+    ridewithgpsRouteId?: string;
+    routeSource: 'strava' | 'ridewithgps';
     name: string;
     description?: string;
     distanceMeters: number;
@@ -58,6 +60,13 @@ export interface CreateEventRequest {
     elevationGain: number;
     estimatedTime: number;
   };
+  ridewithgpsRouteData?: {
+    ridewithgpsRouteId: string;
+    name: string;
+    distance: number;
+    elevationGain?: number;
+    estimatedTime?: number;
+  };
   distanceMeters?: number;
   elevationGainMeters?: number;
 }
@@ -77,6 +86,13 @@ export interface UpdateEventRequest {
     distance: number;
     elevationGain: number;
     estimatedTime: number;
+  };
+  ridewithgpsRouteData?: {
+    ridewithgpsRouteId: string;
+    name: string;
+    distance: number;
+    elevationGain?: number;
+    estimatedTime?: number;
   };
   distanceMeters?: number;
   elevationGainMeters?: number;
